@@ -1,0 +1,30 @@
+---
+// Plain grouped list. The interactive embedding-space scatter (M4) sits on top of this
+// and never replaces it, so every skill stays readable without hovering.
+import { skills, clusterOrder, projects } from '../data/content';
+const name = (id: string) => projects.find((p) => p.id === id)?.name ?? id;
+---
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {
+    clusterOrder.map((c) => (
+      <div class="rounded-xl border border-line bg-surface p-5">
+        <h3 class="font-mono text-xs uppercase tracking-wider text-mint">{c}</h3>
+        <ul class="mt-3 flex flex-wrap gap-1.5">
+          {skills
+            .filter((s) => s.cluster === c)
+            .map((s) => (
+              <li
+                class="cursor-default rounded border border-line px-2 py-1 text-sm text-fg transition-colors"
+                data-skill={s.name}
+                data-projects={s.usedIn.join(' ')}
+                title={s.usedIn.length ? `Used in: ${s.usedIn.map(name).join(', ')}` : undefined}
+              >
+                {s.name}
+              </li>
+            ))}
+        </ul>
+      </div>
+    ))
+  }
+</div>

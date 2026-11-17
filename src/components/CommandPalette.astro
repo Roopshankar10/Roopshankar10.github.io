@@ -1,0 +1,135 @@
+---
+// Ctrl/Cmd+K command palette: jump anywhere, plus a few actions. Native <dialog> gives focus trapping and Esc.
+import { sections, profile } from '../data/site';
+import { projects } from '../data/content';
+
+const items = [
+  { label: 'Ask my portfolio', hint: 'search', action: 'ask' },
+  ...sections.map((s) => ({ label: `Go to ${s.label}`, hint: 'section', href: `/#${s.id}` })),
+  ...projects.map((p) => ({ label: p.name, hint: 'project', href: `/#project-${p.id}` })),
+  { label: 'Download resume', hint: 'file', href: profile.links.resume, download: true },
+  { label: 'Copy email address', hint: 'contact', action: 'copy-email' },
+  { label: 'Open GitHub', hint: 'link', href: profile.links.github, external: true },
+  { label: 'Open LinkedIn', hint: 'link', href: profile.links.linkedin, external: true },
+  { label: 'Toggle dark / light theme', hint: 'action', action: 'theme' },
+  { label: 'Open terminal', hint: 'press `', action: 'terminal' },
+  { label: 'How this site works', hint: 'page', href: '/how-this-site-works' },
+];
+---
+
+<dialog
+  id="cmdk"
+  aria-label="Command palette"
+  class="m-auto mt-[12vh] w-[min(36rem,calc(100vw-2rem))] rounded-xl border border-line-strong bg-surface p-0 text-fg backdrop:bg-black/60"
+>
+  <div class="flex items-center gap-2 border-b border-line px-4">
+    <span class="font-mono text-mint" aria-hidden="true">&gt;</span>
+    <input
+      data-cmdk-input
+      type="text"
+      role="combobox"
+      aria-expanded="true"
+      aria-controls="cmdk-list"
+      aria-autocomplete="list"
+      placeholder="Jump to a section, project or action"
+      class="h-12 w-full bg-transparent font-mono text-sm text-fg placeholder:text-fg-subtle focus:outline-none"
+    />
+    <kbd class="rounded border border-line px-1.5 font-mono text-[11px] text-fg-subtle">esc</kbd>
+  </div>
+  <ul id="cmdk-list" role="listbox" data-cmdk-list class="max-h-[50vh] overflow-y-auto p-2">
+    {
+      items.map((it, i) => (
+        <li
+          id={`cmdk-${i}`}
+          role="option"
+          aria-selected="false"
+          data-label={it.label.toLowerCase()}
+          data-href={it.href}
+          data-action={it.action}
+          data-download={it.download ? '' : undefined}
+          data-external={it.external ? '' : undefined}
+          class="flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-sm text-fg-muted aria-selected:bg-mint-wash aria-selected:text-fg"
+        >
+          <span>{it.label}</span>
+          <span class="font-mono text-xs text-fg-subtle">{it.hint}</span>
+        </li>
+      ))
+    }
+    <li data-cmdk-empty hidden class="px-3 py-2 font-mono text-sm text-amber">NOT_FOUND</li>
+  </ul>
+</dialog>
+
+<script>
+  import { profile } from '../data/site';
+  const dlg = document.getElementById('cmdk') as HTMLDialogElement;
+  const input = dlg.querySelector<HTMLInputElement>('[data-cmdk-input]')!;
+  const all = [...dlg.querySelectorAll<HTMLLIElement>('li[role="option"]')];
+  const empty = dlg.querySelector<HTMLElement>('[data-cmdk-empty]')!;
+  let visible = all;
+  let sel = 0;
+
+  const paint = () => {
+    visible.forEach((li, i) => li.setAttribute('aria-selected', String(i === sel)));
+    const cur = visible[sel];
+    input.setAttribute('aria-activedescendant', cur?.id ?? '');
+    cur?.scrollIntoView({ block: 'nearest' });
+  };
+  const filter = () => {
+    const q = input.value.trim().toLowerCase();
+    visible = all.filter((li) => {
+      const show = !q || q.split(/\s+/).every((w) => li.dataset.label!.includes(w));
+      li.hidden = !show;
+      if (!show) li.setAttribute('aria-selected', 'false');
+      return show;
+    });
+    empty.hidden = visible.length > 0;
+    sel = 0;
+    paint();
+  };
+  const open = () => {
+    if (dlg.open) return;
+    input.value = '';
+    filter();
+    dlg.showModal();
+    input.focus();
+  };
+  const run = (li?: HTMLLIElement) => {
+    if (!li) return;
+    dlg.close();
+    const { href, action } = li.dataset;
+    if (action === 'ask') window.dispatchEvent(new CustomEvent('ask:open'));
+    else if (action === 'theme') document.getElementById('theme-toggle')?.click();
+    else if (action === 'terminal') window.dispatchEvent(new CustomEvent('terminal:open'));
+    else if (action === 'copy-email') navigator.clipboard?.writeText(profile.email);
+    else if (href) {
+      if ('external' in li.dataset) window.open(href, '_blank', 'noopener');
+      else if ('download' in li.dataset) {
+        const a = Object.assign(document.createElement('a'), { href, download: '' });
+        a.click();
+      } else location.href = href;
+    }
+  };
+
+  input.addEventListener('input', filter);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') (sel = Math.min(sel + 1, visible.length - 1)), paint(), e.preventDefault();
+    else if (e.key === 'ArrowUp') (sel = Math.max(sel - 1, 0)), paint(), e.preventDefault();
+    else if (e.key === 'Enter') run(visible[sel]), e.preventDefault();
+  });
+  all.forEach((li) => {
+    li.addEventListener('click', () => run(li));
+    li.addEventListener('mousemove', () => {
+      const i = visible.indexOf(li);
+      if (i !== sel) (sel = i), paint();
+    });
+  });
+  dlg.addEventListener('click', (e) => e.target === dlg && dlg.close()); // click on backdrop
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      dlg.open ? dlg.close() : open();
+    }
+  });
+  window.addEventListener('cmdk:open', open);
+</script>

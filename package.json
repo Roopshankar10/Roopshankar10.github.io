@@ -1,0 +1,25 @@
+{
+  "name": "roopshankar10.github.io",
+  "version": "0.1.0",
+  "scripts": {
+    "prepare-search": "node scripts/prepare-search.mjs",
+    "dev": "npm run prepare-search && astro dev",
+    "build": "npm run prepare-search && npm test && astro build && node scripts/postbuild.mjs",
+    "preview": "astro preview",
+    "test": "node tests/search-eval.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "@huggingface/transformers": "^4.3.2",
+    "@tailwindcss/vite": "^4.3.5",
+    "astro": "^7.4.12",
+    "tailwindcss": "^4.3.5"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}

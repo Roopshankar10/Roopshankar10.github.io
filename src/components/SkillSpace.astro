@@ -1,0 +1,136 @@
+---
+// Skills as an embedding space: each point is the bge-small embedding of "skill (category)",
+// projected to 2D with PCA at build time (scripts/prepare-search.mjs). Rendered as static SVG,
+// so it's visible without JS; hover/focus a point to highlight the projects that use it.
+import data from '../data/generated/skills-2d.json';
+import { skills, clusterOrder, projects } from '../data/content';
+
+const W = 680, H = 380, PAD = 34;
+const projectName = Object.fromEntries(projects.map((p) => [p.id, p.name]));
+
+// Fallback layout (no model at build time): one column per cluster.
+const fallback = (name: string) => {
+  const s = skills.find((k) => k.name === name)!;
+  const ci = clusterOrder.indexOf(s.cluster);
+  const siblings = skills.filter((k) => k.cluster === s.cluster);
+  const j = siblings.indexOf(s);
+  return [(ci + 0.5) / clusterOrder.length, (j + 0.5) / siblings.length];
+};
+
+type P = { name: string; cluster: string; used: string[]; x: number; y: number };
+const pts: P[] = skills.map((s) => {
+  const xy = data.points.find((p) => p.name === s.name)?.xy ?? fallback(s.name);
+  return { name: s.name, cluster: s.cluster, used: s.usedIn, x: PAD + xy[0] * (W - 2 * PAD), y: PAD + (1 - xy[1]) * (H - 2 * PAD) };
+});
+
+// Nudge points apart so none overlap on screen (positions stay within a few px of the projection).
+for (let it = 0; it < 120; it++) {
+  for (let i = 0; i < pts.length; i++)
+    for (let j = i + 1; j < pts.length; j++) {
+      const dx = pts[j].x - pts[i].x, dy = pts[j].y - pts[i].y;
+      const d = Math.hypot(dx, dy) || 0.01, min = 16;
+      if (d < min) {
+        const push = (min - d) / 2, ux = dx / d, uy = dy / d;
+        pts[i].x -= ux * push; pts[i].y -= uy * push;
+        pts[j].x += ux * push; pts[j].y += uy * push;
+      }
+    }
+}
+for (const p of pts) {
+  p.x = Math.min(W - 8, Math.max(8, p.x));
+  p.y = Math.min(H - 8, Math.max(8, p.y));
+}
+
+const clusterIdx = (c: string) => clusterOrder.indexOf(c as (typeof clusterOrder)[number]) + 1;
+const centroids = clusterOrder.map((c) => {
+  const m = pts.filter((p) => p.cluster === c);
+  return { c, x: m.reduce((a, p) => a + p.x, 0) / m.length, y: Math.min(...m.map((p) => p.y)) - 16 };
+});
+const usedText = (p: P) => (p.used.length ? `used in ${p.used.map((u) => projectName[u]).join(', ')}` : 'not tied to a project on this page');
+---
+
+<figure data-skill-space class="overflow-hidden rounded-xl border border-line bg-surface">
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2.5 font-mono text-xs text-fg-subtle sm:px-5">
+    <span class="text-mint">embedding space</span>
+    <span>{data.method ? data.method.replace('Xenova/', '') : 'grouped layout (embeddings unavailable in this build)'}</span>
+    <span aria-hidden="true">·</span><span>{pts.length} skills</span>
+  </div>
+
+  <div class="relative px-2 pt-2 sm:px-4">
+    <svg viewBox={`0 0 ${W} ${H}`} class="h-auto w-full" role="group" aria-label="Skills plotted by embedding similarity. Focus a point to see which projects use it.">
+      {
+        centroids.map((k) => (
+          <text x={k.x} y={Math.max(12, k.y)} text-anchor="middle" class="fill-fg-subtle font-mono" font-size="11" aria-hidden="true">
+            {k.c.toLowerCase()}
+          </text>
+        ))
+      }
+      {
+        pts.map((p) => (
+          <g
+            class="skill-pt"
+            data-skill={p.name}
+            data-projects={p.used.join(' ')}
+            data-c={clusterIdx(p.cluster)}
+            tabindex="0"
+            role="button"
+            aria-label={`${p.name}, ${p.cluster}, ${usedText(p)}`}
+            transform={`translate(${p.x.toFixed(1)} ${p.y.toFixed(1)})`}
+          >
+            <circle r="14" fill="transparent" />
+            <circle r="5.5" class="dot" />
+            <text y="-11" text-anchor="middle" font-size="11" class="lbl font-mono">{p.name}</text>
+          </g>
+        ))
+      }
+    </svg>
+  </div>
+
+  <figcaption class="border-t border-line px-4 py-3 text-sm sm:px-5">
+    <p data-skill-info class="min-h-[1.5rem] text-fg-muted">
+      Hover or focus a point to see which projects use that skill.
+    </p>
+    <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-fg-subtle" aria-label="Legend">
+      {
+        clusterOrder.map((c) => (
+          <li class="flex items-center gap-1.5">
+            <span class="legend-dot" data-c={clusterIdx(c)} aria-hidden="true" />
+            {c}
+          </li>
+        ))
+      }
+    </ul>
+  </figcaption>
+</figure>
+
+<script define:vars={{ projectName }}>
+  // Inline (tiny) so the scatter is interactive without another bundle.
+  const fig = document.querySelector('[data-skill-space]');
+  const info = fig.querySelector('[data-skill-info]');
+  const idle = info.innerHTML;
+  const clear = () => {
+    fig.classList.remove('has-active');
+    document.querySelectorAll('.is-related, .skill-pt.is-on, [data-skill].is-on').forEach((el) => el.classList.remove('is-related', 'is-on'));
+  };
+  const activate = (name, ids) => {
+    clear();
+    fig.classList.add('has-active');
+    document.querySelectorAll(`[data-skill="${CSS.escape(name)}"]`).forEach((el) => el.classList.add('is-on'));
+    ids.forEach((id) => document.getElementById(`project-${id}`)?.classList.add('is-related'));
+    const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    info.innerHTML = ids.length
+      ? `<span class="text-fg">${esc(name)}</span> · used in ` +
+        ids.map((id) => `<a class="text-mint underline underline-offset-2" href="#project-${id}">${esc(projectName[id])}</a>`).join(', ')
+      : `<span class="text-fg">${esc(name)}</span> · a skill I bring, not tied to a project on this page`;
+  };
+  const bind = (el) => {
+    const go = () => activate(el.dataset.skill, (el.dataset.projects || '').split(' ').filter(Boolean));
+    el.addEventListener('mouseenter', go);
+    el.addEventListener('focus', go);
+    el.addEventListener('click', go);
+  };
+  fig.querySelectorAll('.skill-pt').forEach(bind);
+  document.querySelectorAll('li[data-skill]').forEach(bind);
+  fig.querySelector('svg').addEventListener('mouseleave', () => { clear(); info.innerHTML = idle; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { clear(); info.innerHTML = idle; } });
+</script>

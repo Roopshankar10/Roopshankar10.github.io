@@ -1,0 +1,102 @@
+---
+import { profile, heroStats } from '../data/site';
+const initials = profile.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
+---
+
+<section id="hero" aria-labelledby="hero-name" class="grid gap-10 pt-16 pb-14 sm:pt-24 sm:pb-20 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-center">
+  <div>
+    {
+      profile.openToOpportunities && (
+        <p class="mb-6 inline-flex items-center gap-2 rounded-full border border-line-strong px-3 py-1 font-mono text-xs text-fg-muted">
+          <span class="relative flex size-2" aria-hidden="true">
+            <span class="absolute inline-flex size-full animate-ping rounded-full bg-mint opacity-60" />
+            <span class="relative inline-flex size-2 rounded-full bg-mint" />
+          </span>
+          Open to opportunities
+        </p>
+      )
+    }
+
+    <h1 id="hero-name" class="font-mono text-3xl font-semibold tracking-tight text-fg sm:text-5xl">
+      {profile.name}
+    </h1>
+    <p class="mt-2 font-mono text-sm text-mint sm:text-base">
+      {profile.title} · {profile.location}
+    </p>
+
+    <!-- Full sentence is in the HTML (SEO, no-JS, screen readers). JS only animates its reveal. -->
+    <p id="tagline" class="mt-6 max-w-2xl font-serif text-xl leading-snug text-fg-muted sm:text-2xl">
+      {profile.tagline}<span class="cursor" aria-hidden="true"></span>
+    </p>
+
+    <ul class="mt-6 flex flex-wrap gap-2 font-mono text-xs" aria-label="Key results">
+      {
+        heroStats.map((s) => (
+          <li class="rounded border border-amber/30 bg-amber-wash px-2.5 py-1 text-amber">
+            <span class="font-semibold">{s.value}</span> {s.label}
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="mt-8 flex flex-wrap gap-3 text-sm">
+      <a href={profile.links.resume} download class="inline-flex items-center rounded-md bg-mint px-4 py-2 font-medium text-mint-ink hover:opacity-90">Download resume</a>
+      <a href={profile.links.github} rel="me noopener" target="_blank" class="inline-flex items-center rounded-md border border-line-strong px-4 py-2 text-fg-muted hover:border-fg-muted hover:text-fg">GitHub</a>
+      <a href={profile.links.linkedin} rel="me noopener" target="_blank" class="inline-flex items-center rounded-md border border-line-strong px-4 py-2 text-fg-muted hover:border-fg-muted hover:text-fg">LinkedIn</a>
+      <a href="#ask" class="inline-flex items-center rounded-md border border-mint/40 px-4 py-2 font-mono text-mint hover:border-mint"><span aria-hidden="true">&gt;&nbsp;</span>Ask my portfolio</a>
+    </div>
+  </div>
+
+  <!-- Profile photo slot. Set `photo` in src/data/site.ts once public/photo.jpg exists. -->
+  <figure class="order-first lg:order-none">
+    {
+      profile.photo ? (
+        <img
+          src={profile.photo}
+          alt={`Portrait of ${profile.name}`}
+          width="224"
+          height="224"
+          class="size-20 rounded-xl border border-line object-cover sm:size-36 lg:size-56"
+        />
+      ) : (
+        <div
+          class="grid size-20 place-items-center rounded-xl border border-dashed border-line-strong bg-surface font-mono sm:size-36 lg:size-56"
+          role="img"
+          aria-label="Profile photo placeholder"
+        >
+          <span class="text-xl text-fg-subtle sm:text-3xl lg:text-5xl">{initials}</span>
+        </div>
+      )
+    }
+  </figure>
+</section>
+
+<script>
+  // Stream the tagline token by token, like an LLM response.
+  // Words are only faded in (opacity), so layout never shifts and assistive tech reads the whole sentence.
+  const el = document.getElementById('tagline');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (el && !reduce) {
+    const cursor = el.querySelector('.cursor')!;
+    const text = el.firstChild?.textContent ?? '';
+    const tokens = text.match(/\S+\s*/g) ?? [];
+    el.firstChild!.remove();
+    const spans = tokens.map((t) => {
+      const s = document.createElement('span');
+      s.textContent = t;
+      s.style.opacity = '0';
+      el.insertBefore(s, cursor);
+      return s;
+    });
+    let i = 0;
+    const step = () => {
+      if (i >= spans.length) return;
+      spans[i].style.opacity = '1';
+      spans[i].after(cursor);
+      i++;
+      setTimeout(step, 45 + Math.random() * 70);
+    };
+    spans[0]?.before(cursor);
+    setTimeout(step, 350);
+  }
+</script>

@@ -1,0 +1,23 @@
+---
+// Shared section frame: mono index label ("02 · projects") + heading.
+interface Props {
+  id: string;
+  index: number;
+  label: string;
+  title: string;
+}
+const { id, index, label, title } = Astro.props;
+const n = String(index).padStart(2, '0');
+---
+
+<section id={id} aria-labelledby={`${id}-title`} class="border-t border-line py-16 sm:py-20">
+  <p class="font-mono text-xs text-fg-subtle">
+    <span class="text-mint">{n}</span> · {label.toLowerCase()}
+  </p>
+  <h2 id={`${id}-title`} class="mt-2 text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
+    {title}
+  </h2>
+  <div class="mt-8">
+    <slot />
+  </div>
+</section>

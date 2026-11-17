@@ -1,0 +1,64 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import CommandPalette from '../components/CommandPalette.astro';
+import Terminal from '../components/Terminal.astro';
+import { profile } from '../data/site';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const {
+  title = `${profile.name} · ${profile.title}`,
+  description = profile.summary,
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#0a0c0f" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <!-- Runs before paint so the saved theme never flashes. Default is dark. -->
+    <script is:inline>
+      (function () {
+        var t = 'dark';
+        try {
+          var s = localStorage.getItem('theme');
+          if (s === 'light' || s === 'dark') t = s;
+        } catch (e) {}
+        document.documentElement.dataset.theme = t;
+        document.documentElement.classList.add('js');
+      })();
+    </script>
+  </head>
+  <body class="min-h-dvh bg-bg text-fg">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded focus:bg-mint focus:px-3 focus:py-2 focus:text-mint-ink"
+      >Skip to content</a
+    >
+    <Header />
+    <main id="main" class="mx-auto max-w-5xl px-5 sm:px-8">
+      <slot />
+    </main>
+    <Footer />
+    <CommandPalette />
+    <Terminal />
+    <script>
+      import '../scripts/motion';
+    </script>
+  </body>
+</html>

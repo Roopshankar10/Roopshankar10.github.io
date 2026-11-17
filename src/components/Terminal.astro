@@ -1,0 +1,153 @@
+---
+// Easter egg: press ` to open a tiny terminal. Every answer is generated from the same content files as the page.
+---
+
+<dialog
+  id="term"
+  aria-label="Terminal"
+  class="m-auto mt-[10vh] w-[min(44rem,calc(100vw-2rem))] rounded-xl border border-line-strong bg-bg p-0 text-fg backdrop:bg-black/60"
+>
+  <div class="flex items-center gap-2 border-b border-line px-4 py-2 font-mono text-xs text-fg-subtle">
+    <span class="size-2.5 rounded-full bg-[#ff5f57]" aria-hidden="true"></span>
+    <span class="size-2.5 rounded-full bg-[#febc2e]" aria-hidden="true"></span>
+    <span class="size-2.5 rounded-full bg-[#28c840]" aria-hidden="true"></span>
+    <span class="ml-2">guest@roop: ~</span>
+    <button type="button" data-term-close class="ml-auto hover:text-fg" aria-label="Close terminal">esc</button>
+  </div>
+  <div data-term-out class="h-[min(24rem,60vh)] overflow-y-auto px-4 py-3 font-mono text-[13px] leading-relaxed whitespace-pre-wrap" aria-live="polite"></div>
+  <form data-term-form class="flex items-center gap-2 border-t border-line px-4 py-2 font-mono text-[13px]">
+    <label for="term-input" class="text-mint">$</label>
+    <input id="term-input" data-term-input autocomplete="off" spellcheck="false" class="w-full bg-transparent text-fg focus:outline-none" aria-label="Command" />
+  </form>
+</dialog>
+
+<script>
+  import { profile } from '../data/site';
+  import { projects, trace, skills, clusterOrder, certifications, education } from '../data/content';
+
+  const dlg = document.getElementById('term') as HTMLDialogElement;
+  const out = dlg.querySelector<HTMLElement>('[data-term-out]')!;
+  const form = dlg.querySelector<HTMLFormElement>('[data-term-form]')!;
+  const input = dlg.querySelector<HTMLInputElement>('[data-term-input]')!;
+  const history: string[] = [];
+  let hIdx = 0;
+
+  const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
+  const print = (html: string) => {
+    out.insertAdjacentHTML('beforeend', `<div>${html}</div>`);
+    out.scrollTop = out.scrollHeight;
+  };
+  const dim = (s: string) => `<span class="text-fg-subtle">${esc(s)}</span>`;
+  const ok = (s: string) => `<span class="text-mint">${esc(s)}</span>`;
+  const num = (s: string) => `<span class="text-amber">${esc(s)}</span>`;
+  const dots = (label: string, w = 20) => esc(label + ' ' + '.'.repeat(Math.max(2, w - label.length)));
+
+  const sia = projects.find((p) => p.id === 'sia')!;
+  const commands: Record<string, (args: string[]) => string> = {
+    help: () =>
+      [
+        'available commands:',
+        '  whoami          who this is',
+        '  projects        list projects',
+        '  experience      career trace',
+        '  skills          skills by cluster',
+        '  eval --latest   latest eval results',
+        '  certs           certifications',
+        '  contact         how to reach me',
+        '  cat resume.pdf  download the resume',
+        '  ask <question>  search this portfolio',
+        '  theme           toggle dark / light',
+        '  clear · exit',
+      ].map(esc).join('\n'),
+    whoami: () => `${ok(profile.name)} · ${esc(profile.title)} · ${esc(profile.location)}\n${esc(profile.summary)}`,
+    projects: () =>
+      projects
+        .map((p) => `${p.status === 'coming-soon' ? num('soon') : ok('live')}  ${esc(p.name)}  ${dim(p.context)}`)
+        .join('\n'),
+    experience: () =>
+      trace
+        .map((s) => `${ok('span')} ${esc(s.name)} ${dim(`· ${s.meta} · ${s.when}`)}` + (s.children ?? []).map((c) => `\n  └ ${esc(c.name)} ${dim(`· ${c.meta}`)}`).join(''))
+        .join('\n'),
+    skills: () => clusterOrder.map((c) => `${ok(c.padEnd(18))} ${esc(skills.filter((s) => s.cluster === c).map((s) => s.name).join(', '))}`).join('\n'),
+    eval: (args) => {
+      if (args[0] !== '--latest') return `usage: eval --latest`;
+      return (
+        `${ok('service-instructions-assistant')} ${dim('· retrieval + router evals')}\n` +
+        sia.metrics
+          .map((m) => {
+            const pass = m.ratio === 1 ? ` ${ok('PASS')}` : '';
+            return `  ${dots(m.label.toLowerCase())} ${num(m.value)}${pass}${m.note ? ' ' + dim(m.note) : ''}`;
+          })
+          .join('\n')
+      );
+    },
+    certs: () => certifications.map((c) => `${ok('✓')} ${esc(c.name)} ${dim('· ' + c.issuer)}`).join('\n') + `\n${dim(education[0].degree + ' · ' + education[0].school + ' · ' + education[0].years)}`,
+    contact: () => `email     ${esc(profile.email)}\nlinkedin  ${esc(profile.links.linkedin)}\ngithub    ${esc(profile.links.github)}`,
+    cat: (args) => {
+      if (args[0] !== 'resume.pdf') return args[0] ? `cat: ${esc(args[0])}: NOT_FOUND` : 'usage: cat resume.pdf';
+      Object.assign(document.createElement('a'), { href: profile.links.resume, download: '' }).click();
+      return `${dim('%PDF-1.7 … binary file.')} Downloading ${ok('resume.pdf')} instead.`;
+    },
+    ls: () => esc('projects/  experience/  skills/  resume.pdf  contact.txt'),
+    ask: (args) => {
+      const q = args.join(' ').trim();
+      if (!q) return 'usage: ask <question>';
+      dlg.close();
+      const box = document.querySelector<HTMLInputElement>('[data-ask-input]');
+      if (box) {
+        box.value = q;
+        box.form?.requestSubmit();
+        window.dispatchEvent(new CustomEvent('ask:open'));
+      }
+      return `searching for "${esc(q)}"…`;
+    },
+    theme: () => {
+      document.getElementById('theme-toggle')?.click();
+      return `theme → ${esc(document.documentElement.dataset.theme ?? '')}`;
+    },
+    clear: () => ((out.innerHTML = ''), ''),
+    exit: () => (dlg.close(), ''),
+    sudo: () => 'nice try. permission denied.',
+  };
+
+  const run = (line: string) => {
+    print(`${ok('$')} ${esc(line)}`);
+    const [cmd, ...args] = line.trim().split(/\s+/);
+    if (!cmd) return;
+    const fn = commands[cmd.toLowerCase()];
+    const res = fn ? fn(args) : `${esc(cmd)}: command NOT_FOUND. try ${ok('help')}`;
+    if (res) print(res);
+  };
+
+  const open = () => {
+    if (dlg.open) return;
+    if (!out.innerHTML) print(`${dim('roop-shell 1.0 · type')} ${ok('help')} ${dim('to list commands')}`);
+    dlg.showModal();
+    input.focus();
+  };
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const line = input.value;
+    input.value = '';
+    if (line.trim()) history.push(line);
+    hIdx = history.length;
+    run(line);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' && hIdx > 0) (input.value = history[--hIdx]), e.preventDefault();
+    else if (e.key === 'ArrowDown') (input.value = hIdx < history.length - 1 ? history[++hIdx] : ((hIdx = history.length), '')), e.preventDefault();
+    else if (e.key === '`') (e.preventDefault(), dlg.close());
+  });
+  dlg.querySelector('[data-term-close]')!.addEventListener('click', () => dlg.close());
+
+  document.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement;
+    const typing = t.closest('input, textarea, [contenteditable="true"]');
+    if (e.key === '`' && !typing && !e.metaKey && !e.ctrlKey) {
+      e.preventDefault();
+      open();
+    }
+  });
+  window.addEventListener('terminal:open', open);
+</script>

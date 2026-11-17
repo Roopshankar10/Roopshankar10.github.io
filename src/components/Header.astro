@@ -1,0 +1,62 @@
+---
+import { profile, sections } from '../data/site';
+const initials = profile.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
+---
+
+<header class="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur">
+  <nav class="mx-auto flex h-14 max-w-5xl items-center gap-4 px-5 sm:px-8" aria-label="Main">
+    <a href="/" class="font-mono text-sm font-semibold tracking-tight text-fg hover:text-mint">
+      <span class="text-mint" aria-hidden="true">~/</span>{initials.toLowerCase()}
+      <span class="sr-only">{profile.name}, home</span>
+    </a>
+    <ul class="ml-auto hidden items-center gap-5 font-mono text-xs text-fg-muted md:flex">
+      {
+        sections.map((s) => (
+          <li>
+            <a href={`/#${s.id}`} class="hover:text-mint">
+              {s.label.toLowerCase()}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <button
+      type="button"
+      data-open-cmdk
+      class="ml-auto hidden h-8 items-center gap-2 rounded-md border border-line-strong px-2.5 font-mono text-xs text-fg-muted hover:border-mint hover:text-fg sm:inline-flex md:ml-0"
+    >
+      <span class="sr-only">Open command palette</span>
+      <kbd data-cmdk-key>ctrl k</kbd>
+    </button>
+    <button
+      id="theme-toggle"
+      type="button"
+      class="ml-auto inline-flex h-8 items-center gap-2 rounded-md border border-line-strong px-2.5 font-mono text-xs text-fg-muted hover:border-mint hover:text-fg sm:ml-0"
+      title="Switch theme"
+    >
+      <span data-theme-label>theme: dark</span>
+    </button>
+  </nav>
+</header>
+
+<script>
+  const btn = document.getElementById('theme-toggle')!;
+  const label = btn.querySelector('[data-theme-label]')!;
+  const sync = () => {
+    const t = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    label.textContent = `theme: ${t}`;
+    btn.setAttribute('aria-pressed', String(t === 'light'));
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#0a0c0f' : '#f7f6f2');
+  };
+  btn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem('theme', next);
+    } catch {}
+    sync();
+  });
+  sync();
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) document.querySelector('[data-cmdk-key]')!.textContent = '⌘K';
+  document.querySelector('[data-open-cmdk]')!.addEventListener('click', () => window.dispatchEvent(new CustomEvent('cmdk:open')));
+</script>

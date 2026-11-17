@@ -1,0 +1,150 @@
+// Pure retrieval logic for "Ask my portfolio": no DOM, no model. Runs in the browser and in tests.
+// Hybrid = dense cosine (bge-small) + BM25 keyword, merged with Reciprocal Rank Fusion,
+// the same recipe as the production assistant this portfolio describes.
+
+export type Chunk = { id: string; section: string; anchor: string; title: string; text: string; emb?: string };
+
+export type Hit = { chunk: Chunk; cosine: number | null; bm25: number; rrf: number };
+export type Result =
+  | { kind: 'answer'; hits: Hit[]; mode: Mode; bestCosine: number | null }
+  | { kind: 'not_found'; mode: Mode; bestCosine: number | null; reason: string };
+export type Mode = 'hybrid' | 'keyword';
+
+// Calibrated on bge-small-en-v1.5 with in-scope and out-of-scope questions:
+// out-of-scope questions still score ~0.45–0.61, so cosine alone can't say "not found".
+// A passage only counts if a meaningful query term matches it (BM25 > 0), or cosine is high on its own.
+export const COSINE_STRONG = 0.68;
+const MIN_COVERAGE = 0.5;
+const RRF_K = 60;
+const TOP_K = 3;
+
+// Words that say nothing about *what* is being asked. They don't count as evidence.
+const STOP = new Set(
+  ('a an the and or of to in on for with at by from as is are was were be been being it its this that these those ' +
+    'he him his she her they them their you your i me my we our us roop shankar voruganti ' +
+    'what which who whom whose where when why how do does did done has have had can could should would will ' +
+    'tell about any some much many more most there here into than then also just like know knows experience ' +
+    'use used using skill skills please show give list me new').split(' '),
+);
+
+export function tokenize(s: string): string[] {
+  return (s.toLowerCase().match(/[a-z0-9]+(?:[.\-][a-z0-9]+)*/g) ?? [])
+    .map(stem);
+}
+// Tiny suffix stemmer: enough to match "studied"/"study", "chunks"/"chunk", "indexed"/"index".
+function stem(t: string): string {
+  if (t.length > 4 && t.endsWith('ied')) return t.slice(0, -3) + 'y';
+  if (t.length > 5 && t.endsWith('ing')) return t.slice(0, -3);
+  if (t.length > 4 && t.endsWith('ed')) return t.slice(0, -2);
+  if (t.length > 4 && t.endsWith('s') && !t.endsWith('ss')) return t.slice(0, -1);
+  return t;
+}
+const contentTerms = (s: string) => tokenize(s).filter((t) => !STOP.has(t));
+
+export class Bm25 {
+  private docs: Map<string, number>[] = [];
+  private lens: number[] = [];
+  private df = new Map<string, number>();
+  private avg = 0;
+  private k1 = 1.2;
+  private b = 0.75;
+  constructor(chunks: Chunk[]) {
+    for (const c of chunks) {
+      const tf = new Map<string, number>();
+      const toks = tokenize(`${c.title} ${c.text}`);
+      for (const t of toks) tf.set(t, (tf.get(t) ?? 0) + 1);
+      this.docs.push(tf);
+      this.lens.push(toks.length);
+      for (const t of tf.keys()) this.df.set(t, (this.df.get(t) ?? 0) + 1);
+    }
+    this.avg = this.lens.reduce((a, b) => a + b, 0) / Math.max(1, this.lens.length);
+  }
+  /** Share of the query's meaningful terms that appear in each chunk (0..1). */
+  coverage(query: string): number[] {
+    const q = [...new Set(contentTerms(query))];
+    if (!q.length) return this.docs.map(() => 0);
+    return this.docs.map((tf) => q.filter((t) => tf.has(t)).length / q.length);
+  }
+  scores(query: string): number[] {
+    const N = this.docs.length;
+    const q = [...new Set(contentTerms(query))];
+    return this.docs.map((tf, i) => {
+      let s = 0;
+      for (const t of q) {
+        const f = tf.get(t);
+        if (!f) continue;
+        const df = this.df.get(t)!;
+        const idf = Math.log(1 + (N - df + 0.5) / (df + 0.5));
+        s += (idf * f * (this.k1 + 1)) / (f + this.k1 * (1 - this.b + (this.b * this.lens[i]) / this.avg));
+      }
+      return s;
+    });
+  }
+}
+
+export function decodeEmb(b64: string): Float32Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Float32Array(bytes.buffer);
+}
+
+const dot = (a: Float32Array, b: ArrayLike<number>) => {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s;
+};
+
+const ranks = (scores: number[], keep: (s: number) => boolean) => {
+  const order = scores.map((s, i) => [s, i] as const).filter(([s]) => keep(s)).sort((a, b) => b[0] - a[0]);
+  const r = new Map<number, number>();
+  order.forEach(([, i], pos) => r.set(i, pos + 1));
+  return r;
+};
+
+/** queryVec = normalized query embedding, or null for keyword-only mode. */
+export function search(
+  query: string,
+  chunks: Chunk[],
+  bm25: Bm25,
+  vectors: Float32Array[] | null,
+  queryVec: ArrayLike<number> | null,
+): Result {
+  const mode: Mode = vectors && queryVec ? 'hybrid' : 'keyword';
+  if (!contentTerms(query).length && mode === 'keyword') {
+    return { kind: 'not_found', mode, bestCosine: null, reason: 'No searchable terms in the question.' };
+  }
+  const kw = bm25.scores(query);
+  const cos = mode === 'hybrid' ? vectors!.map((v) => dot(v, queryVec!)) : null;
+  const bestCosine = cos ? Math.max(...cos) : null;
+
+  // Evidence gate: a chunk is a candidate if it contains at least half of the query's
+  // meaningful terms, or (hybrid only) it is semantically very close on its own.
+  const cov = bm25.coverage(query);
+  const candidate = (i: number) => cov[i] >= MIN_COVERAGE || (cos !== null && cos[i] >= COSINE_STRONG);
+  const kwRank = ranks(kw, (s) => s > 0);
+  const denseRank = cos ? ranks(cos, () => true) : new Map<number, number>();
+
+  const hits: Hit[] = [];
+  chunks.forEach((chunk, i) => {
+    if (!candidate(i)) return;
+    let rrf = 0;
+    if (kwRank.has(i)) rrf += 1 / (RRF_K + kwRank.get(i)!);
+    if (denseRank.has(i)) rrf += 1 / (RRF_K + denseRank.get(i)!);
+    hits.push({ chunk, cosine: cos ? cos[i] : null, bm25: kw[i], rrf });
+  });
+  hits.sort((a, b) => b.rrf - a.rrf);
+
+  if (!hits.length) {
+    return {
+      kind: 'not_found',
+      mode,
+      bestCosine,
+      reason:
+        mode === 'hybrid'
+          ? `No passage contains the key terms of the question, and the best similarity (${bestCosine!.toFixed(2)}) is below ${COSINE_STRONG}.`
+          : 'No passage contains the key terms of the question.',
+    };
+  }
+  return { kind: 'answer', hits: hits.slice(0, TOP_K), mode, bestCosine };
+}

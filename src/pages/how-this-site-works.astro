@@ -1,0 +1,135 @@
+---
+import fs from 'node:fs';
+import Base from '../layouts/Base.astro';
+import evalSummary from '../data/generated/search-eval.json';
+import { profile } from '../data/site';
+
+// Facts about this build, read from the generated index (so this page can't drift from reality).
+const indexPath = `${process.cwd()}/public/search-index.json`; // build runs from the project root
+const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+const indexKB = Math.round(fs.statSync(indexPath).size / 1024);
+const model = index.model as null | { id: string; dtype: string; dims: number };
+const repo = `${profile.links.github}/Roopshankar10.github.io`;
+
+const buildSteps = [
+  ['content', 'Typed data files: the single source for the page, the search index and the terminal'],
+  ['chunk', `${index.chunks.length} self-contained passages, each tied to the section it came from`],
+  ['embed', model ? `${model.id.split('/')[1]} (${model.dtype}), ${model.dims}-d, CLS pooling, normalized` : 'skipped in this build (keyword-only)'],
+  ['index', `search-index.json, ${indexKB} KB: passages + vectors`],
+];
+const querySteps = [
+  ['embed', 'Your question, embedded in a Web Worker with transformers.js (WebAssembly)'],
+  ['retrieve', 'Cosine similarity over every passage, plus BM25 keyword scores'],
+  ['fuse', 'Reciprocal Rank Fusion (k = 60) merges the two rankings'],
+  ['gate', 'Evidence check: no qualifying passage → NOT_FOUND'],
+  ['cite', 'Top 3 passages shown with [S1]–[S3] chips that scroll to the source'],
+];
+---
+
+<Base title="How this site works · Roop Shankar Voruganti" description="How the in-browser RAG search on this portfolio works: build-time embeddings, transformers.js in a Web Worker, hybrid BM25 + dense retrieval with RRF.">
+  <article class="py-16 sm:py-20">
+    <p class="font-mono text-xs text-fg-subtle"><a href="/" class="text-mint underline underline-offset-2">~/</a> how-this-site-works</p>
+    <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">How this site works</h1>
+    <p class="mt-4 max-w-3xl text-lg leading-relaxed text-fg-muted">
+      "Ask my portfolio" is real retrieval, not a scripted demo. It runs entirely in your browser: no server, no API key,
+      no data leaves the page. It uses the same recipe as the assistants I build, at the size of one web page.
+    </p>
+
+    <section class="mt-12" aria-labelledby="pipe">
+      <h2 id="pipe" class="text-xl font-semibold">The pipeline</h2>
+      <div class="mt-5 grid gap-4 lg:grid-cols-2">
+        {
+          [
+            ['at build time (GitHub Actions)', buildSteps],
+            ['when you ask (your browser)', querySteps],
+          ].map(([title, steps]) => (
+            <div class="rounded-xl border border-line bg-surface p-5">
+              <p class="font-mono text-xs text-fg-subtle">{title as string}</p>
+              <ol class="mt-4 space-y-3">
+                {(steps as string[][]).map(([stage, detail], i) => (
+                  <li class="grid grid-cols-[6.5rem_1fr] items-start gap-3">
+                    <span class="rounded border border-mint/40 bg-mint-wash px-2 py-0.5 text-center font-mono text-xs text-mint">
+                      {i + 1}. {stage}
+                    </span>
+                    <span class="text-sm text-fg-muted">{detail}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="mt-12" aria-labelledby="evals">
+      <h2 id="evals" class="text-xl font-semibold">Evals before opinions</h2>
+      <p class="mt-3 max-w-3xl text-fg-muted">
+        Every build runs a small retrieval eval before deploying: {evalSummary.inScope} questions the page can answer
+        (the right passage must be in the top 3), and {evalSummary.outOfScope} it can't (the answer must be NOT_FOUND).
+      </p>
+      <ul class="mt-5 grid gap-3 sm:grid-cols-2">
+        {
+          Object.entries(evalSummary.results).map(([mode, pass]) => (
+            <li class="rounded-xl border border-line bg-surface p-5">
+              <p class="font-mono text-xs text-fg-subtle">{mode === 'hybrid' ? `hybrid · ${evalSummary.model} + BM25` : 'keyword fallback · BM25 only'}</p>
+              <p class="mt-2 font-mono text-2xl font-semibold text-amber">
+                {pass as number}/{evalSummary.total}
+              </p>
+              <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+                <div class="h-full rounded-full bg-amber" style={`width:${(((pass as number) / evalSummary.total) * 100).toFixed(1)}%`} />
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="mt-3 font-mono text-xs text-fg-subtle">last run {evalSummary.runAt.slice(0, 10)} · source: tests/search-eval.mjs</p>
+    </section>
+
+    <section class="mt-12 max-w-3xl space-y-6" aria-labelledby="choices">
+      <h2 id="choices" class="text-xl font-semibold">Decisions worth explaining</h2>
+      <div>
+        <h3 class="font-semibold">Similarity alone can't say "not found"</h3>
+        <p class="mt-1 text-fg-muted">
+          On this content, off-topic questions ("Does he know Kubernetes?") still score 0.45–0.61 cosine against the
+          closest passage, close to real answers. So a passage only counts as evidence if it contains at least half
+          of the question's meaningful terms, or its similarity is high on its own (≥ 0.68). Otherwise the answer is
+          NOT_FOUND.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold">Hybrid, because exact words matter</h3>
+        <p class="mt-1 text-fg-muted">
+          Dense vectors catch paraphrases; BM25 catches exact terms like "FTS5" or "hit@5". Reciprocal Rank Fusion merges
+          the two rankings without having to calibrate their very different score scales against each other.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold">Nothing loads until you ask</h3>
+        <p class="mt-1 text-fg-muted">
+          The page itself ships no search code. When you focus the box, keyword search answers right away while the model
+          (~34 MB, cached after the first visit) loads in a Web Worker; your question is then re-ranked with embeddings.
+          If the model can't load, BM25 keeps working on its own.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold">Quoted, not generated</h3>
+        <p class="mt-1 text-fg-muted">
+          Answers are passages from this page with citations, not text written by a model, so the search can't state
+          anything the page doesn't.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold">Self-hosted and free</h3>
+        <p class="mt-1 text-fg-muted">
+          The model weights and the ONNX Runtime WebAssembly files are served from this site, not a CDN. The site is static
+          (Astro + Tailwind), built and deployed by GitHub Actions to GitHub Pages. Every fact on the page is plain HTML,
+          so it all reads without JavaScript.
+        </p>
+      </div>
+    </section>
+
+    <p class="mt-12">
+      <a href={repo} target="_blank" rel="noopener" class="inline-flex rounded-md border border-line-strong px-4 py-2 text-sm hover:border-mint">View the source on GitHub ↗</a>
+    </p>
+  </article>
+</Base>

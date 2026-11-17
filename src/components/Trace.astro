@@ -1,0 +1,101 @@
+---
+// Career rendered as an observability trace. Bars are positioned on a 2020 → today axis.
+// Child spans have no dates in the brief, so they're drawn as dashed bars across their
+// parent's range ("inside this span") instead of inventing start/end dates.
+import { trace, type Span } from '../data/content';
+
+const AXIS_START = new Date('2020-01-01').getTime();
+const NOW = Date.now();
+const toMs = (d: string) => (d === 'present' ? NOW : new Date(`${d}-01`).getTime());
+const pct = (ms: number) => ((ms - AXIS_START) / (NOW - AXIS_START)) * 100;
+
+function duration(s: Span) {
+  if (!s.start || !s.end) return '';
+  if (s.when === '2020–2024') return '4y';
+  const months = Math.floor((toMs(s.end) - toMs(s.start)) / (1000 * 60 * 60 * 24 * 30.44));
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  return [y ? `${y}y` : '', m ? `${m}m` : ''].filter(Boolean).join(' ');
+}
+
+type Row = { span: Span; depth: number; left: number; width: number; dated: boolean };
+const rows: Row[] = [];
+function walk(spans: Span[], depth: number, parent?: { left: number; width: number }) {
+  for (const s of spans) {
+    let left = parent?.left ?? 0;
+    let width = parent?.width ?? 100;
+    const dated = Boolean(s.start && s.end);
+    if (dated) {
+      left = pct(toMs(s.start!));
+      width = pct(toMs(s.end!)) - left;
+    }
+    rows.push({ span: s, depth, left, width, dated });
+    if (s.children) walk(s.children, depth + 1, { left, width });
+  }
+}
+walk(trace, 0);
+
+const years = [];
+for (let y = 2020; y <= new Date(NOW).getFullYear(); y++) years.push(y);
+---
+
+<div data-reveal class="overflow-hidden rounded-xl border border-line bg-surface">
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2.5 font-mono text-xs text-fg-subtle sm:px-5">
+    <span class="text-mint">trace</span><span>career</span><span aria-hidden="true">·</span>
+    <span>{rows.length} spans</span><span aria-hidden="true">·</span><span>2020 → today</span>
+  </div>
+
+  <!-- year axis (desktop) -->
+  <div class="hidden grid-cols-[minmax(0,22rem)_minmax(0,1fr)] gap-4 border-b border-line px-5 py-2 md:grid" aria-hidden="true">
+    <span class="font-mono text-xs text-fg-subtle">span</span>
+    <div class="relative h-4 font-mono text-[11px] text-fg-subtle">
+      {
+        years.map((y) => (
+          <span class="absolute -translate-x-1/2" style={`left:${pct(new Date(`${y}-01-01`).getTime())}%`}>
+            {y}
+          </span>
+        ))
+      }
+    </div>
+  </div>
+
+  <ol class="divide-y divide-line">
+    {
+      rows.map(({ span: s, depth, left, width, dated }, i) => (
+        <li class="grid gap-2 px-4 py-3 sm:px-5 md:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] md:items-center md:gap-4">
+          <div class="min-w-0" style={`padding-left:${depth * 1.1}rem`}>
+            <p class="flex items-center gap-2 text-sm text-fg">
+              {depth > 0 && <span class="font-mono text-fg-subtle" aria-hidden="true">└</span>}
+              {s.projectId ? (
+                <a href={`#project-${s.projectId}`} class="hover:text-mint">{s.name}</a>
+              ) : (
+                <span>{s.name}</span>
+              )}
+            </p>
+            <p class="mt-0.5 text-xs text-fg-muted" style={depth > 0 ? 'padding-left:1.15rem' : ''}>
+              {s.meta}
+            </p>
+            {s.when && <p class="mt-0.5 font-mono text-xs text-fg-subtle">{s.when}</p>}
+          </div>
+          <div class:list={['relative h-5', !dated && 'hidden md:block']} aria-hidden="true">
+            <div
+              class:list={[
+                'span-bar absolute top-1/2 h-2 -translate-y-1/2 rounded-sm',
+                dated ? (depth === 0 ? 'bg-mint' : 'bg-mint/70') : 'border border-dashed border-mint/50 bg-mint-wash',
+              ]}
+              style={`left:${left}%;width:${Math.max(width, 1)}%;--i:${i}`}
+            />
+            {dated && (
+              <span
+                class="span-label absolute top-1/2 -translate-y-1/2 font-mono text-[11px] text-fg-muted"
+                style={left + width > 82 ? `right:${100 - left + 1}%` : `left:calc(${left + width}% + 6px)`}
+              >
+                {duration(s)}
+              </span>
+            )}
+          </div>
+        </li>
+      ))
+    }
+  </ol>
+</div>
