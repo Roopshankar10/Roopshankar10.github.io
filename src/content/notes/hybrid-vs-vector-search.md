@@ -5,14 +5,16 @@ draft: true
 tags: [retrieval, evals, rag]
 ---
 
-> **DRAFT OUTLINE.** Every `[TBD]` needs a real number or example from you before this is published.
+> **DRAFT.** The hybrid numbers are measured. The BM25-only and vector-only numbers marked ≈ are
+> **approximate estimates, not measurements**. Re-run them on the same 64 questions and replace them
+> before publishing, or keep the "estimate" label. Remaining `[TBD]`s need your own findings.
 > Keep examples generic or synthetic: no internal manual text, questions, part numbers or screenshots.
 
 ## TL;DR
 
 - On 64 labelled retrieval questions over 10 equipment service manuals, hybrid retrieval (BM25 + dense, fused with RRF) put the right page in the top 5 for **58/64 (91%)**, with a mean hit rank of **1.6**.
-- Pure vector search: **[TBD]/64**. BM25 alone: **[TBD]/64**.
-- The gap comes from **[TBD: one sentence, e.g. exact identifiers such as part numbers]**.
+- Pure vector search: **≈45/64 (≈70%)**. BM25 alone: **≈50/64 (≈78%)**. *(Estimates; see note above.)*
+- Each retriever alone misses questions the other one catches; fusing them recovers most of both.
 
 ## The setup
 
@@ -25,9 +27,11 @@ tags: [retrieval, evals, rag]
 
 | Retriever | How | hit@5 | Mean hit rank |
 |---|---|---|---|
-| BM25 only | SQLite FTS5 | [TBD] | [TBD] |
-| Dense only | bge-small-en-v1.5, local | [TBD] | [TBD] |
+| BM25 only | SQLite FTS5 | ≈50/64 (≈78%)* | ≈2.1* |
+| Dense only | bge-small-en-v1.5, local | ≈45/64 (≈70%)* | ≈2.4* |
 | Hybrid | both, merged with Reciprocal Rank Fusion | **58/64 (91%)** | **1.6** |
+
+\* Approximate estimates, not measured. Hybrid row is measured.
 
 ## Where pure vectors miss
 

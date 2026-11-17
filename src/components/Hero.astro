@@ -51,13 +51,17 @@ const initials = profile.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
   <figure class="order-first lg:order-none">
     {
       profile.photo ? (
-        <img
-          src={profile.photo}
-          alt={`Portrait of ${profile.name}`}
-          width="224"
-          height="224"
-          class="size-20 rounded-xl border border-line object-cover sm:size-36 lg:size-56"
-        />
+        <picture>
+          <source srcset={profile.photo.replace(/\.jpg$/, '.webp')} type="image/webp" />
+          <img
+            src={profile.photo}
+            alt={`Portrait of ${profile.name}`}
+            width="480"
+            height="480"
+            fetchpriority="high"
+            class="size-24 rounded-xl border border-line object-cover sm:size-36 lg:size-56"
+          />
+        </picture>
       ) : (
         <div
           class="grid size-20 place-items-center rounded-xl border border-dashed border-line-strong bg-surface font-mono sm:size-36 lg:size-56"

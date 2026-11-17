@@ -18,7 +18,7 @@ const cases = [
   ['What is RRF?', 'sia-architecture|principle-3|sia-decisions|skills-retrieval'],
   ['Which LLM does the service assistant use?', 'sia-architecture'],
   ['How many chunks were indexed?', 'sia-architecture'],
-  ['Does he know LangChain?', 'skills-llm-orchestration|biotech-decisions|multidoc-architecture'],
+  ['Does he know LangChain?', 'skills-llm-orchestration|biotech-decisions|biotech-architecture'],
   ['Does he know Kubernetes?', null],
   ['What is his favourite food?', null],
   ['Has he worked with React Native?', null],

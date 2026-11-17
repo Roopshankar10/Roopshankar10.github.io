@@ -93,24 +93,6 @@ export const projects: Project[] = [
     linksNote: 'Client work · no public code or demo.',
   },
   {
-    id: 'multidoc',
-    name: 'Multi-document summarization with RAG',
-    context: 'Personal project',
-    status: 'shipped',
-    problem: 'Summarize across multiple documents with an LLM grounded by retrieval, and check whether retrieval actually helps.',
-    pipeline: [
-      { stage: 'ingest', detail: 'Multiple source documents' },
-      { stage: 'embed', detail: 'SentenceTransformer embeddings' },
-      { stage: 'retrieve', detail: 'LangChain + FAISS' },
-      { stage: 'generate', detail: 'LLM-based summarization' },
-    ],
-    decisions: ['Benchmarked against an LLM-only baseline'],
-    metrics: [],
-    metricsNote: 'Benchmark write-up pending.',
-    stack: ['Python', 'LangChain', 'FAISS', 'SentenceTransformers', 'LLMs'],
-    links: [{ label: 'GitHub', href: null }],
-  },
-  {
     id: 'copilot',
     name: 'Service Manual Copilot',
     context: 'Public project · in progress',
@@ -181,19 +163,19 @@ export const trace: Span[] = [
 export type SkillCluster = 'Retrieval' | 'LLM orchestration' | 'Evaluation' | 'Backend / Deploy' | 'ML / NLP';
 
 export const skills: { name: string; cluster: SkillCluster; usedIn: string[] }[] = [
-  { name: 'RAG', cluster: 'Retrieval', usedIn: ['sia', 'biotech', 'multidoc'] },
-  { name: 'Embeddings', cluster: 'Retrieval', usedIn: ['sia', 'biotech', 'multidoc'] },
-  { name: 'FAISS', cluster: 'Retrieval', usedIn: ['biotech', 'multidoc'] },
+  { name: 'RAG', cluster: 'Retrieval', usedIn: ['sia', 'biotech'] },
+  { name: 'Embeddings', cluster: 'Retrieval', usedIn: ['sia', 'biotech'] },
+  { name: 'FAISS', cluster: 'Retrieval', usedIn: ['biotech'] },
   { name: 'Hybrid search (BM25 + dense, RRF)', cluster: 'Retrieval', usedIn: ['sia'] },
   { name: 'SQLite FTS5', cluster: 'Retrieval', usedIn: ['sia'] },
-  { name: 'LLMs', cluster: 'LLM orchestration', usedIn: ['sia', 'biotech', 'multidoc'] },
-  { name: 'LangChain', cluster: 'LLM orchestration', usedIn: ['biotech', 'multidoc'] },
+  { name: 'LLMs', cluster: 'LLM orchestration', usedIn: ['sia', 'biotech'] },
+  { name: 'LangChain', cluster: 'LLM orchestration', usedIn: ['biotech'] },
   { name: 'LlamaIndex', cluster: 'LLM orchestration', usedIn: [] },
   { name: 'Prompt engineering', cluster: 'LLM orchestration', usedIn: ['sia', 'biotech'] },
   { name: 'Agents / tool integration', cluster: 'LLM orchestration', usedIn: ['biotech'] },
-  { name: 'Evaluation', cluster: 'Evaluation', usedIn: ['sia', 'multidoc'] },
+  { name: 'Evaluation', cluster: 'Evaluation', usedIn: ['sia'] },
   { name: 'Guardrails', cluster: 'Evaluation', usedIn: ['sia'] },
-  { name: 'Python', cluster: 'Backend / Deploy', usedIn: ['sia', 'biotech', 'multidoc'] },
+  { name: 'Python', cluster: 'Backend / Deploy', usedIn: ['sia', 'biotech'] },
   { name: 'Streamlit', cluster: 'Backend / Deploy', usedIn: ['sia'] },
   { name: 'Ollama', cluster: 'Backend / Deploy', usedIn: ['sia'] },
   { name: 'scikit-learn', cluster: 'ML / NLP', usedIn: [] },
@@ -201,7 +183,7 @@ export const skills: { name: string; cluster: SkillCluster; usedIn: string[] }[]
   { name: 'NumPy', cluster: 'ML / NLP', usedIn: [] },
   { name: 'Machine learning', cluster: 'ML / NLP', usedIn: [] },
   { name: 'Deep learning', cluster: 'ML / NLP', usedIn: [] },
-  { name: 'NLP', cluster: 'ML / NLP', usedIn: ['multidoc'] },
+  { name: 'NLP', cluster: 'ML / NLP', usedIn: [] },
 ];
 
 export const clusterOrder: SkillCluster[] = ['Retrieval', 'LLM orchestration', 'Evaluation', 'Backend / Deploy', 'ML / NLP'];
@@ -226,7 +208,7 @@ export const principles = [
   },
   {
     title: 'Ship with tests and baselines',
-    body: 'An end-to-end smoke test, and a baseline to beat: even a personal project gets compared against an LLM-only version.',
+    body: 'An end-to-end smoke test runs before anything ships, and every change is measured against a baseline it has to beat.',
   },
 ];
 

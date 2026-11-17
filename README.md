@@ -68,11 +68,10 @@ Edit `src/data/content.ts` or `src/data/site.ts` and push. The search index, ter
 
 ## Replace-me checklist
 
-- [ ] **Resume:** replace `public/resume.pdf` with your real resume (keep the filename).
-- [ ] **Photo:** add `public/photo.jpg` (square, ~600 px), then set `photo: '/photo.jpg'` in `src/data/site.ts`.
+- [x] **Resume:** `public/resume.pdf`, the public copy without phone number and with the client named generically. To update it, replace the file and keep the filename.
+- [x] **Photo:** `public/photo.jpg` + `photo.webp` (480 px square). Replace both to change it.
 - [ ] **Service Manual Copilot links:** when it's live, set the `Live demo` and `GitHub` `href`s in `src/data/content.ts` (project `copilot`) and change `status` to `'shipped'`.
-- [ ] **Multi-document summarization repo:** set its `GitHub` `href` in `src/data/content.ts` (project `multidoc`), or remove the link.
-- [ ] **Blog post:** fill every `[TBD]` in `src/content/notes/hybrid-vs-vector-search.md` (vector-only and BM25-only scores on the same 64 questions), then set `draft: false`.
-- [ ] **Review wording:** problem statements for the biotech and multi-document projects, the "How I build" one-liners, and the skill → project links (`usedIn`) in `src/data/content.ts`.
+- [ ] **Blog post:** in `src/content/notes/hybrid-vs-vector-search.md`, replace the ≈ estimates for BM25-only and vector-only with measured numbers (or keep the "estimate" label), fill the remaining `[TBD]`s, then set `draft: false`.
+- [ ] **Review wording:** the biotech problem statement, the "How I build" one-liners, and the skill → project links (`usedIn`) in `src/data/content.ts`.
 - [ ] **Project dates (optional):** add months to the child spans in `trace` to get real bars instead of dashed ones.
 - [ ] **Open to opportunities:** set `openToOpportunities: false` in `src/data/site.ts` when you're no longer looking.

@@ -6,8 +6,8 @@ export const profile = {
   title: 'AI Engineer',
   location: 'Hyderabad, India',
   openToOpportunities: true,
-  // Put your photo at public/photo.jpg (square, ~600px) and set this to '/photo.jpg'.
-  photo: null as string | null,
+  // Square portrait in public/ (photo.jpg + photo.webp). Set to null to show initials instead.
+  photo: '/photo.jpg' as string | null,
   tagline:
     'Building Generative AI systems with LLMs, Retrieval-Augmented Generation and LangChain orchestration.',
   summary:
