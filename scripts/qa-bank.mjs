@@ -21,28 +21,38 @@ const SKILL_ALIASES = {
   FAISS: ['faiss', 'vector database', 'vector databases', 'vector db', 'vector store', 'vector search'],
   'Hybrid search (BM25 + dense, RRF)': ['hybrid search', 'hybrid retrieval', 'bm25', 'rrf', 'reciprocal rank fusion', 'keyword search'],
   'SQLite FTS5': ['sqlite', 'fts5', 'full text search', 'full-text search'],
-  LLMs: ['llm', 'llms', 'large language model', 'large language models', 'gpt', 'llama'],
+  'Llama 3 (via Ollama)': ['llama', 'llama 3', 'llama3', 'llm', 'llms', 'large language model', 'large language models', 'open source llm', 'local llm'],
   LangChain: ['langchain', 'lang chain'],
   LlamaIndex: ['llamaindex', 'llama index', 'llama-index'],
   'Prompt engineering': ['prompt engineering', 'prompting', 'prompts'],
   'Agents / tool integration': ['agent', 'agents', 'agentic', 'tool calling', 'tool use', 'function calling'],
-  Evaluation: ['evaluation', 'evaluations', 'evals', 'eval', 'testing llm', 'llm evaluation', 'rag evaluation'],
-  Guardrails: ['guardrail', 'guardrails'],
+  'Retrieval evals (hit@k, mean rank)': ['evaluation', 'evaluations', 'evals', 'eval', 'hit@k', 'hit@5', 'mean rank', 'rag evaluation', 'llm evaluation', 'retrieval evaluation'],
+  'End-to-end smoke tests': ['smoke test', 'smoke tests', 'end-to-end test', 'end-to-end tests', 'testing', 'tests'],
+  'Citation validation': ['citation', 'citations', 'citation validation', 'guardrail', 'guardrails', 'grounding'],
+  'NOT_FOUND handling': ['not found', 'not_found', 'refusal', 'refusals', 'abstain', 'abstention'],
   Python: ['python'],
   Streamlit: ['streamlit'],
   Ollama: ['ollama'],
+  'Azure API Management': ['azure', 'azure api management', 'apim', 'api gateway', 'api management'],
+  'Supervised learning (classification)': ['machine learning', 'ml', 'classification', 'supervised learning', 'classifier', 'classifiers'],
+  'Anomaly detection': ['anomaly detection', 'outlier detection', 'anomalies'],
+  'LSTM / GRU sequence models': ['deep learning', 'lstm', 'gru', 'rnn', 'neural network', 'neural networks', 'sequence model', 'sequence models'],
+  NLP: ['nlp', 'natural language processing'],
   'scikit-learn': ['scikit-learn', 'scikit learn', 'sklearn'],
   Pandas: ['pandas'],
   NumPy: ['numpy'],
-  'Machine learning': ['machine learning', 'ml'],
-  'Deep learning': ['deep learning', 'neural network', 'neural networks'],
-  NLP: ['nlp', 'natural language processing'],
+  Matplotlib: ['matplotlib', 'data visualization', 'visualization'],
+};
+// Extra phrasings for skills people ask about in their own words.
+const EXTRA_VARIANTS = {
+  'Llama 3 (via Ollama)': ['Which LLMs have you used?', 'Which language models have you worked with?', 'What models do you use?', 'Which LLM do you use?'],
+  'Retrieval evals (hit@k, mean rank)': ['Which retrieval metrics do you use?', 'What is hit@k?'],
 };
 const CLUSTER_PHRASE = {
   Retrieval: 'retrieval',
   'LLM orchestration': 'LLM orchestration',
   Evaluation: 'evaluation',
-  'Backend / Deploy': 'backend and deployment',
+  'Backend / Cloud': 'backend and cloud',
   'ML / NLP': 'ML and NLP',
 };
 const PROJECT_ALIASES = {
@@ -65,7 +75,7 @@ export async function buildQaBank() {
   // 2. Skills: "Do you know X?" → yes, with where it was used
   for (const s of skills) {
     const names = SKILL_ALIASES[s.name] ?? [s.name.toLowerCase()];
-    const shown = s.name.replace(' (BM25 + dense, RRF)', '');
+    const shown = s.name.replace(' (BM25 + dense, RRF)', '').replace(' (via Ollama)', '');
     const used = s.usedIn.map((id) => nameOf[id]).filter(Boolean);
     B.push({
       id: `skill-${slug(s.name)}`, kind: 'gen', q: `Do you know ${shown}?`, anchor: '#skills', entities: names,
@@ -73,6 +83,7 @@ export async function buildQaBank() {
         `Do you know ${shown}?`, `Have you worked with ${shown}?`, `What is your experience with ${shown}?`, `Are you familiar with ${shown}?`, `Have you used ${shown}?`,
         // the same questions under the other names visitors use (e.g. "BM25" for hybrid search)
         ...names.filter((a) => a !== shown.toLowerCase()).slice(0, 3).flatMap((a) => [`Do you know ${a}?`, `Are you familiar with ${a}?`]),
+        ...(EXTRA_VARIANTS[s.name] ?? []),
       ],
       a: `Yes. ${shown} is part of my ${CLUSTER_PHRASE[s.cluster]} toolkit${used.length ? `, and I used it in ${list(used)}` : ''}.`,
     });
@@ -130,7 +141,7 @@ export async function buildQaBank() {
   B.push({
     id: 'exp-role', kind: 'gen', q: 'What is your current role?', anchor: '#experience',
     variants: ['What is your current role?', 'What is your job title?', 'What do you do at TCS?', 'What is your designation?', 'What is your current position?'],
-    a: `${tcs.meta} at Tata Consultancy Services, since March 2025. My work there includes ${list((tcs.children ?? []).map((c) => c.name))}.`,
+    a: `${tcs.meta} at Tata Consultancy Services, since March 2025. ${(tcs.impact ?? []).map((b) => b.text).join('. ')}.`,
   });
 
   // 5. Education and certifications

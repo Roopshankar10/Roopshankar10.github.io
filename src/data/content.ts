@@ -17,6 +17,11 @@ export type Metric = {
 export type Project = {
   id: string;
   tier?: 'work' | 'academic'; // academic = B.Tech projects, shown below current work
+  milestones?: { label: string; done: boolean }[]; // in-progress projects: honest progress instead of "soon"
+  updated?: string; // YYYY-MM-DD, shown as "last updated" on in-progress projects
+  evalNote?: string; // one honest line about the eval set
+  // Retriever comparison on the same eval set. Rows with null values are hidden until filled in.
+  baselines?: { name: string; hit5: string | null; meanRank: string | null }[];
   date?: string; // e.g. 'Mar 2024'
   name: string;
   context: string;
@@ -54,13 +59,18 @@ export const projects: Project[] = [
       'Structure-aware chunking',
       'LLM router before search',
       'Per-engine answers are never mixed',
-      'Explicit NOT_FOUND when the manuals don’t cover a question',
     ],
     metrics: [
       { label: 'Retrieval hit@5', value: '58/64 · 91%', ratio: 58 / 64, note: 'right page in top 5' },
       { label: 'Mean hit rank', value: '1.6' },
-      { label: 'End-to-end smoke test', value: '12/12', ratio: 1 },
+      { label: 'End-to-end smoke test', value: '12/12 passing', ratio: 1 },
       { label: 'LLM router accuracy', value: '33/34', ratio: 33 / 34, note: 'labelled messages' },
+    ],
+    evalNote: 'Eval set: 64 hand-written questions across 10 manuals. Small, but fixed and re-run on every change.',
+    baselines: [
+      { name: 'Hybrid (BM25 + dense, RRF)', hit5: '91% (58/64)', meanRank: '1.6' },
+      { name: 'Dense only (bge-small)', hit5: null, meanRank: null }, // [[FILL]]
+      { name: 'BM25 only (FTS5)', hit5: null, meanRank: null }, // [[FILL]]
     ],
     stack: [
       'Python', 'bge-small-en-v1.5', 'SQLite FTS5', 'BM25', 'RRF', 'OCR',
@@ -99,6 +109,7 @@ export const projects: Project[] = [
     name: 'Service Manual Copilot',
     context: 'Public project · in progress',
     status: 'coming-soon',
+    updated: '2026-11-18',
     problem: 'Production-grade RAG over public FAA maintenance handbooks, built in the open.',
     pipeline: [
       { stage: 'ingest', detail: 'Public FAA maintenance handbooks' },
@@ -108,14 +119,20 @@ export const projects: Project[] = [
       { stage: 'generate', detail: '' },
       { stage: 'validate', detail: '' },
     ],
-    decisions: ['FastAPI service', 'Docker', 'CI evals', 'Observability', 'Live demo'],
-    metrics: [],
-    metricsNote: 'Evals will run in CI and publish here.',
-    stack: ['Python', 'FastAPI', 'Docker'],
-    links: [
-      { label: 'Live demo', href: null },
-      { label: 'GitHub', href: null },
+    decisions: [],
+    // Mark a milestone done: true when it ships; add the repo link below once the repo is public.
+    milestones: [
+      { label: 'Ingestion + eval harness', done: false },
+      { label: 'API (FastAPI)', done: false },
+      { label: 'CI eval gate', done: false },
+      { label: 'Docker', done: false },
+      { label: 'Observability', done: false },
+      { label: 'Live demo', done: false },
     ],
+    metrics: [],
+    metricsNote: 'The same retrieval eval harness will run in CI and publish here.',
+    stack: ['Python'],
+    links: [],
   },
 ];
 
@@ -199,74 +216,59 @@ export type Span = {
   when?: string; // displayed date text, exactly as in the brief
   children?: Span[];
   projectId?: string;
+  impact?: { text: string; projectId?: string }[]; // 2–3 impact bullets, each linking to its project card
 };
 
 export const trace: Span[] = [
-  {
-    name: 'B.Tech, Computer Science & Data Science',
-    meta: 'Mahatma Gandhi Institute of Technology, Hyderabad',
-    start: '2020-01',
-    end: '2024-12',
-    when: '2020–2024',
-    children: [
-      { name: 'Credit card fraud detection', meta: 'B.Tech project', start: '2023-03', end: '2023-03', when: 'Mar 2023', projectId: 'fraud' },
-      { name: 'Book mood prediction', meta: 'B.Tech project', start: '2023-08', end: '2023-08', when: 'Aug 2023', projectId: 'book-mood' },
-      { name: 'PUBG player hacker detection', meta: 'B.Tech project', start: '2024-03', end: '2024-03', when: 'Mar 2024', projectId: 'pubg' },
-    ],
-  },
   {
     name: 'Tata Consultancy Services',
     meta: 'Systems Engineer (AI Developer – GenAI)',
     start: '2025-03',
     end: 'present',
     when: 'Mar 2025–present',
-    children: [
-      { name: 'Service Instructions Assistant', meta: 'internal Manufacturing AI initiative', projectId: 'sia' },
-      {
-        name: 'Enterprise GenAI · global biotech client',
-        meta: 'PLM team',
-        projectId: 'biotech',
-        children: [
-          { name: 'RAG Knowledge Assistant', meta: 'LangChain + FAISS' },
-          { name: 'RTM Validation Solution', meta: 'traceability gaps across specs and ALM artifacts' },
-          { name: 'JIRA–GPT integration', meta: 'prototype' },
-          { name: 'AI use-case discovery', meta: 'with stakeholders' },
-        ],
-      },
+    impact: [
+      { text: 'Built the Service Instructions Assistant solo: hybrid RAG over 10 equipment manuals, 91% hit@5, citation-validated answers', projectId: 'sia' },
+      { text: 'Delivered GenAI prototypes for a global biotech client: RAG knowledge assistant, RTM validation, JIRA–GPT integration', projectId: 'biotech' },
+      { text: 'Ran AI use-case discovery and feasibility with business stakeholders', projectId: 'biotech' },
     ],
   },
 ];
 
 // ---------- Skills ----------
-export type SkillCluster = 'Retrieval' | 'LLM orchestration' | 'Evaluation' | 'Backend / Deploy' | 'ML / NLP';
+export type SkillCluster = 'Retrieval' | 'LLM orchestration' | 'Evaluation' | 'Backend / Cloud' | 'ML / NLP';
 
+// Concrete skills only: each is something a project on this page actually used, or that Roop listed
+// on his resume. Add FastAPI / Docker / CI / observability here only once Service Manual Copilot uses them.
 export const skills: { name: string; cluster: SkillCluster; usedIn: string[] }[] = [
   { name: 'RAG', cluster: 'Retrieval', usedIn: ['sia', 'biotech'] },
   { name: 'Embeddings', cluster: 'Retrieval', usedIn: ['sia', 'biotech'] },
   { name: 'FAISS', cluster: 'Retrieval', usedIn: ['biotech'] },
   { name: 'Hybrid search (BM25 + dense, RRF)', cluster: 'Retrieval', usedIn: ['sia'] },
   { name: 'SQLite FTS5', cluster: 'Retrieval', usedIn: ['sia'] },
-  { name: 'LLMs', cluster: 'LLM orchestration', usedIn: ['sia', 'biotech'] },
+  { name: 'Llama 3 (via Ollama)', cluster: 'LLM orchestration', usedIn: ['sia'] }, // [[FILL: other models used, e.g. on the biotech project]]
   { name: 'LangChain', cluster: 'LLM orchestration', usedIn: ['biotech'] },
   { name: 'LlamaIndex', cluster: 'LLM orchestration', usedIn: [] },
   { name: 'Prompt engineering', cluster: 'LLM orchestration', usedIn: ['sia', 'biotech'] },
   { name: 'Agents / tool integration', cluster: 'LLM orchestration', usedIn: ['biotech'] },
-  { name: 'Evaluation', cluster: 'Evaluation', usedIn: ['sia'] },
-  { name: 'Guardrails', cluster: 'Evaluation', usedIn: ['sia'] },
-  { name: 'Python', cluster: 'Backend / Deploy', usedIn: ['sia', 'biotech'] },
-  { name: 'Streamlit', cluster: 'Backend / Deploy', usedIn: ['sia'] },
-  { name: 'Ollama', cluster: 'Backend / Deploy', usedIn: ['sia'] },
+  { name: 'Retrieval evals (hit@k, mean rank)', cluster: 'Evaluation', usedIn: ['sia'] },
+  { name: 'End-to-end smoke tests', cluster: 'Evaluation', usedIn: ['sia'] },
+  { name: 'Citation validation', cluster: 'Evaluation', usedIn: ['sia'] },
+  { name: 'NOT_FOUND handling', cluster: 'Evaluation', usedIn: ['sia'] },
+  { name: 'Python', cluster: 'Backend / Cloud', usedIn: ['sia', 'biotech'] },
+  { name: 'Streamlit', cluster: 'Backend / Cloud', usedIn: ['sia'] },
+  { name: 'Ollama', cluster: 'Backend / Cloud', usedIn: ['sia'] },
+  { name: 'Azure API Management', cluster: 'Backend / Cloud', usedIn: ['sia'] },
+  { name: 'Supervised learning (classification)', cluster: 'ML / NLP', usedIn: ['pubg', 'book-mood', 'fraud'] },
+  { name: 'Anomaly detection', cluster: 'ML / NLP', usedIn: ['pubg'] },
+  { name: 'LSTM / GRU sequence models', cluster: 'ML / NLP', usedIn: ['book-mood'] },
+  { name: 'NLP', cluster: 'ML / NLP', usedIn: ['book-mood'] },
   { name: 'scikit-learn', cluster: 'ML / NLP', usedIn: [] },
   { name: 'Pandas', cluster: 'ML / NLP', usedIn: [] },
   { name: 'NumPy', cluster: 'ML / NLP', usedIn: [] },
-  { name: 'Machine learning', cluster: 'ML / NLP', usedIn: ['pubg', 'fraud'] },
-  { name: 'Deep learning', cluster: 'ML / NLP', usedIn: ['book-mood'] },
-  { name: 'NLP', cluster: 'ML / NLP', usedIn: ['book-mood'] },
-  { name: 'Supervised learning', cluster: 'ML / NLP', usedIn: ['pubg', 'book-mood', 'fraud'] },
-  { name: 'Anomaly detection', cluster: 'ML / NLP', usedIn: ['pubg'] },
+  { name: 'Matplotlib', cluster: 'ML / NLP', usedIn: ['fraud'] },
 ];
 
-export const clusterOrder: SkillCluster[] = ['Retrieval', 'LLM orchestration', 'Evaluation', 'Backend / Deploy', 'ML / NLP'];
+export const clusterOrder: SkillCluster[] = ['Retrieval', 'LLM orchestration', 'Evaluation', 'Backend / Cloud', 'ML / NLP'];
 
 // ---------- How I build ----------
 export const principles = [

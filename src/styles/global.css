@@ -225,6 +225,27 @@ li[data-skill].is-on { border-color: var(--mint); color: var(--mint); }
 .prose-note th, .prose-note td { border-bottom: 1px solid var(--line); padding: 0.5rem 0.75rem; text-align: left; }
 .prose-note th { color: var(--fg); font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
 
+/* Keyboard-key style for hints like ` and Ctrl K */
+.kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 0.35em;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--fg-muted);
+}
+/* Keyboard hints mean nothing on touch screens */
+@media (hover: none) and (pointer: coarse) {
+  .desktop-hint {
+    display: none !important;
+  }
+}
+
 /* Blinking cursor used by the streaming tagline. */
 .cursor {
   display: inline-block;

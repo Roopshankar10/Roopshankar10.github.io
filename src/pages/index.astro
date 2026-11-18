@@ -8,10 +8,10 @@ import Skills from '../components/Skills.astro';
 import AskPanel from '../components/AskPanel.astro';
 import SkillSpace from '../components/SkillSpace.astro';
 import { profile } from '../data/site';
-import { getCollection } from 'astro:content';
+import { visibleNotes } from '../lib/notes';
 import { projects, academicProjects, principles, education, certifications } from '../data/content';
 import AcademicCard from '../components/AcademicCard.astro';
-const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft) - Number(b.data.draft));
+const notes = await visibleNotes();
 ---
 
 <Base>
@@ -38,7 +38,7 @@ const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft)
 
   <SectionShell id="skills" index={3} label="skills" title="Skills">
     <SkillSpace />
-    <div class="mt-6"><Skills /></div>
+    <div class="sm:mt-6"><Skills /></div>
   </SectionShell>
 
   <SectionShell id="principles" index={4} label="how I build" title="How I build">
@@ -82,6 +82,7 @@ const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft)
     </div>
   </SectionShell>
 
+  {notes.length > 0 && (
   <SectionShell id="notes" index={6} label="notes" title="Notes">
     <ul class="space-y-3">
       {
@@ -102,8 +103,9 @@ const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft)
       }
     </ul>
   </SectionShell>
+  )}
 
-  <SectionShell id="contact" index={7} label="contact" title="Get in touch">
+  <SectionShell id="contact" index={notes.length > 0 ? 7 : 6} label="contact" title="Get in touch">
     <ul class="grid gap-3 font-mono text-sm sm:grid-cols-3">
       <li>
         <a class="block rounded-md border border-line p-4 hover:border-mint" href={`mailto:${profile.email}`}>

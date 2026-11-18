@@ -41,18 +41,14 @@ export async function buildChunks() {
     if (p.linksNote) add(`${p.id}-links`, 'Projects', a, `${p.name} · availability`, p.linksNote);
   }
 
-  for (const s of trace) {
-    const kids = (s.children ?? []).map((c) => c.name);
-    const id = s.name.startsWith('Tata') ? 'exp-tcs' : 'exp-mgit';
-    const text = id === 'exp-tcs'
-      ? `${profile.name} works at ${s.name} (TCS) as ${s.meta}, ${s.when}. Work there includes ${list(kids)}.`
-      : `${profile.name} studied at ${s.meta}: ${s.name}, ${s.when}.`;
-    add(id, 'Experience', '#experience', s.name, text);
-    for (const c of s.children ?? [])
-      if (c.children?.length)
-        add(`exp-${c.projectId ?? c.name}`, 'Experience', '#experience', c.name,
-          `${c.name} (${c.meta}) at ${s.name}: ${c.children.map((k) => `${k.name} (${k.meta})`).join('; ')}.`);
-  }
+  for (const s of trace)
+    add('exp-tcs', 'Experience', '#experience', s.name,
+      `${profile.name} works at ${s.name} (TCS) as ${s.meta}, ${s.when}. ${(s.impact ?? []).map((b) => b.text).join('. ')}.`);
+  // Baselines and the eval-set note are part of the SIA evidence too.
+  for (const p of projects)
+    if (p.evalNote)
+      add(`${p.id}-evalset`, 'Projects', `#project-${p.id}`, `${p.name} · eval set`,
+        `${p.evalNote}${(p.baselines ?? []).filter((b) => b.hit5).map((b) => ` ${b.name}: hit@5 ${b.hit5}, mean hit rank ${b.meanRank}.`).join('')}`);
 
   for (const cl of clusterOrder) {
     const names = skills.filter((s) => s.cluster === cl).map((s) => s.name);
@@ -67,8 +63,7 @@ export async function buildChunks() {
   add('certifications', 'Education', '#education', 'Certifications',
     `Certifications: ${certifications.map((c) => `${c.name} (${c.issuer})`).join('; ')}.`);
 
-  add('notes', 'Notes', '#notes', 'Notes',
-    'Draft post, coming soon: Hybrid search vs pure vector search: what I measured on 64 questions.');
+  // Notes are indexed only once a post is published (drafts stay out of search).
   add('contact', 'Contact', '#contact', 'Contact',
     `Email ${profile.email}. LinkedIn ${profile.links.linkedin}. GitHub ${profile.links.github}. Resume available as a PDF download.`);
   add('site', 'This site', '#ask', 'How this site works',

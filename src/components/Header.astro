@@ -1,5 +1,7 @@
 ---
-import { profile, sections } from '../data/site';
+import { profile, sections as allSections } from '../data/site';
+import { visibleNotes } from '../lib/notes';
+const sections = (await visibleNotes()).length ? allSections : allSections.filter((s) => s.id !== 'notes');
 const initials = profile.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
 ---
 
@@ -23,7 +25,7 @@ const initials = profile.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
     <button
       type="button"
       data-open-cmdk
-      class="ml-auto hidden h-8 items-center gap-2 rounded-md border border-line-strong px-2.5 font-mono text-xs text-fg-muted hover:border-mint hover:text-fg sm:inline-flex md:ml-0"
+      class="desktop-hint ml-auto hidden h-8 items-center gap-2 rounded-md border border-line-strong px-2.5 font-mono text-xs text-fg-muted hover:border-mint hover:text-fg sm:inline-flex md:ml-0"
     >
       <span class="sr-only">Open command palette</span>
       <kbd data-cmdk-key>ctrl k</kbd>
@@ -57,6 +59,6 @@ const initials = profile.name.split(' ').map((w) => w[0]).slice(0, 2).join('');
     sync();
   });
   sync();
-  if (/Mac|iPhone|iPad/.test(navigator.platform)) document.querySelector('[data-cmdk-key]')!.textContent = '⌘K';
+  if (/Mac|iPhone|iPad/.test(navigator.platform)) document.querySelectorAll('[data-cmdk-key]').forEach((k) => (k.textContent = '⌘K'));
   document.querySelector('[data-open-cmdk]')!.addEventListener('click', () => window.dispatchEvent(new CustomEvent('cmdk:open')));
 </script>

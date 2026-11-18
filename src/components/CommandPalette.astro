@@ -1,6 +1,8 @@
 ---
 // Ctrl/Cmd+K command palette: jump anywhere, plus a few actions. Native <dialog> gives focus trapping and Esc.
-import { sections, profile } from '../data/site';
+import { sections as allSections, profile } from '../data/site';
+import { visibleNotes } from '../lib/notes';
+const sections = (await visibleNotes()).length ? allSections : allSections.filter((s) => s.id !== 'notes');
 import { allProjects as projects } from '../data/content';
 
 const items = [

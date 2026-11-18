@@ -68,7 +68,7 @@ Edit `src/data/content.ts` or `src/data/site.ts` and push. The search index, ter
 
 ## Replace-me checklist
 
-- [x] **Resume:** `public/resume.pdf`, the public copy without phone number and with the client named generically. To update it, replace the file and keep the filename.
+- [x] **Resume:** `public/Roop_Shankar_Voruganti_Resume.pdf`, the public copy without phone number and with the client named generically. To update it, replace the file and keep the filename.
 - [x] **Photo:** `public/photo.jpg` + `photo.webp` (480 px square). Replace both to change it.
 - [ ] **Service Manual Copilot links:** when it's live, set the `Live demo` and `GitHub` `href`s in `src/data/content.ts` (project `copilot`) and change `status` to `'shipped'`.
 - [ ] **Blog post:** in `src/content/notes/hybrid-vs-vector-search.md`, replace the ≈ estimates for BM25-only and vector-only with measured numbers (or keep the "estimate" label), fill the remaining `[TBD]`s, then set `draft: false`.

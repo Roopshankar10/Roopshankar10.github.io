@@ -54,7 +54,7 @@ export const faq: Faq[] = [
   {
     id: 'cities', group: 'Logistics', q: 'Which cities do you prefer?',
     alts: ['Preferred location?', 'Which city do you want to work in?', 'Which locations are you open to?', 'Preferred work location?'],
-    a: 'Hyderabad and Bangalore.',
+    a: 'Hyderabad first, and I’m open to Bengaluru.',
   },
   {
     id: 'reach', group: 'Logistics', q: 'What’s the best way to reach you?',
@@ -88,8 +88,13 @@ export const faq: Faq[] = [
   },
   {
     id: 'hallucination', group: 'Skills', q: 'How do you keep a RAG system from hallucinating?',
-    alts: ['How do you prevent hallucinations?', 'How do you stop the model from making things up?', 'How do you make LLM answers reliable?', 'What guardrails do you use?', 'How do you handle questions the documents don’t answer?'],
+    alts: ['How do you prevent hallucinations?', 'How do you stop the model from making things up?', 'What happens when the manuals don’t have the answer?', 'What if the documents don’t contain the answer?', 'How do you make LLM answers reliable?', 'What guardrails do you use?', 'How do you handle questions the documents don’t answer?'],
     a: 'Ground answers in retrieved sources, validate every citation in code, route the question before searching, never mix answers across different engines, and return NOT_FOUND when the sources don’t cover it. Then measure it with an eval set instead of trusting demos.',
+  },
+  {
+    id: 'evaluate', group: 'Skills', q: 'How do you evaluate retrieval?',
+    alts: ['How do you measure RAG quality?', 'How do you test a RAG system?', 'What metrics do you use for retrieval?', 'How do you know your retrieval works?', 'How does he evaluate RAG?'],
+    a: 'With a fixed eval set: 64 hand-written questions across 10 manuals, each labelled with the page that answers it. I track hit@5 (58/64, 91%) and mean hit rank (1.6), run an end-to-end smoke test (12/12 passing), and measure the LLM router separately on labelled messages (33/34). The set stays fixed and is re-run on every change.',
   },
   {
     id: 'chunking', group: 'Skills', q: 'How do you decide how to chunk documents?',
@@ -113,8 +118,8 @@ export const faq: Faq[] = [
   },
   {
     id: 'cloud', group: 'Skills', q: 'Which cloud platforms have you used?',
-    alts: ['Do you know AWS?', 'Do you know Azure?', 'Do you know GCP?', 'Cloud experience?'],
-    a: 'Not hands-on yet. My LLM work has run on local models (Llama 3 via Ollama).',
+    alts: ['Do you know AWS?', 'Do you know GCP?', 'Cloud experience?', 'Have you worked on the cloud?'],
+    a: 'Azure: my Service Instructions Assistant was served behind an Azure API Management gateway. Beyond that, I haven’t done hands-on work on AWS, Azure or GCP yet; my LLM work has run on local models (Llama 3 via Ollama).',
   },
   {
     id: 'backend', group: 'Skills', q: 'Do you know FastAPI, Docker and CI/CD?',

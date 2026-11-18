@@ -5,7 +5,7 @@ const deployed = new Date().toISOString().slice(0, 10);
 ---
 
 <footer class="mt-16 border-t border-line">
-  <div class="mx-auto flex max-w-5xl flex-col gap-2 px-5 py-8 font-mono text-xs text-fg-subtle sm:px-8 md:flex-row md:items-center md:justify-between">
+  <div class="mx-auto flex max-w-5xl flex-col gap-2 px-5 py-8 font-mono text-xs text-fg-subtle sm:px-8">
     <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
       <span class="inline-block size-2 rounded-full bg-mint" aria-hidden="true"></span>
       <span class="whitespace-nowrap">all systems operational</span>
@@ -16,8 +16,8 @@ const deployed = new Date().toISOString().slice(0, 10);
     </p>
     <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
       <a href="/how-this-site-works" class="whitespace-nowrap hover:text-mint">how this site works</a>
-      <span aria-hidden="true" class="hidden sm:inline">·</span>
-      <span class="hidden whitespace-nowrap sm:inline">press <kbd class="text-fg-muted">`</kbd> for a terminal</span>
+      <span aria-hidden="true" class="desktop-hint hidden sm:inline">·</span>
+      <span class="desktop-hint hidden whitespace-nowrap sm:inline">press <kbd class="kbd">`</kbd> for a terminal · <kbd class="kbd" data-cmdk-key>ctrl k</kbd> to jump</span>
       <span aria-hidden="true">·</span>
       <span class="whitespace-nowrap">© {new Date().getFullYear()} {profile.name}</span>
     </p>

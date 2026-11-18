@@ -16,7 +16,7 @@ export const profile = {
   links: {
     github: 'https://github.com/Roopshankar10',
     linkedin: 'https://www.linkedin.com/in/roopshankarvoruganti',
-    resume: '/resume.pdf',
+    resume: '/Roop_Shankar_Voruganti_Resume.pdf',
   },
 } as const;
 

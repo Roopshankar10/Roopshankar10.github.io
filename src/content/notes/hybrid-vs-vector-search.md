@@ -1,57 +1,57 @@
 ---
 title: 'Hybrid search vs pure vector search: what I measured on 64 questions'
-summary: 'Same corpus, same questions, three retrievers: BM25, dense vectors, and both fused with RRF. Where pure vectors miss, and why exact identifiers decide it.'
+summary: 'Dense-only vs BM25-only vs both fused with RRF, on 64 hand-written questions over 10 equipment service manuals. Why exact identifiers decide it.'
 draft: true
 tags: [retrieval, evals, rag]
 ---
 
-> **DRAFT.** The hybrid numbers are measured. The BM25-only and vector-only numbers marked ≈ are
-> **approximate estimates, not measurements**. Re-run them on the same 64 questions and replace them
-> before publishing, or keep the "estimate" label. Remaining `[TBD]`s need your own findings.
-> Keep examples generic or synthetic: no internal manual text, questions, part numbers or screenshots.
+> **DRAFT. Not published.** Fill every `[[FILL]]` with real numbers, then set `draft: false` and add `date:`.
+> Keep manual names and company specifics generic: the system is internal.
 
-## TL;DR
+*[[FILL: date]] · ~5 min read*
 
-- On 64 labelled retrieval questions over 10 equipment service manuals, hybrid retrieval (BM25 + dense, fused with RRF) put the right page in the top 5 for **58/64 (91%)**, with a mean hit rank of **1.6**.
-- Pure vector search: **≈45/64 (≈70%)**. BM25 alone: **≈50/64 (≈78%)**. *(Estimates; see note above.)*
-- Each retriever alone misses questions the other one catches; fusing them recovers most of both.
+When I built a RAG assistant over industrial equipment service manuals, I started with what most tutorials suggest: embed the chunks, embed the question, return the nearest neighbours. It worked well on "how do I…" questions. It failed on the questions technicians actually ask, which are full of part numbers, error codes, and torque values.
 
-## The setup
+So I measured it instead of arguing about it.
 
-- **Corpus:** 10 service manuals (engines, generator sets, aircraft maintenance), 5,232 chunks, including 2 scanned manuals read with OCR.
-- **Chunking:** structure-aware: chunks follow the manuals' own sections.
-- **Questions:** 64 retrieval questions, each labelled with the page that answers it. **[TBD: how they were written and labelled]**
-- **Metric:** hit@5, meaning the labelled page appears in the top 5 results. Plus mean rank of the first hit.
+## Setup
 
-## The three retrievers
+- **Corpus:** 10 service manuals, 5,232 chunks after structure-aware chunking (sections, tables and procedures kept intact). 2 manuals were scanned, so they went through OCR first.
+- **Dense retriever:** `bge-small-en-v1.5` embeddings.
+- **Sparse retriever:** BM25 via SQLite FTS5.
+- **Hybrid:** both lists fused with Reciprocal Rank Fusion (RRF, k = [[FILL: k value]]).
+- **Eval set:** 64 hand-written questions, each labelled with the chunk(s) that answer it. Metrics: **hit@5** (is a correct chunk in the top 5?) and **mean hit rank** (where the first correct chunk lands).
 
-| Retriever | How | hit@5 | Mean hit rank |
-|---|---|---|---|
-| BM25 only | SQLite FTS5 | ≈50/64 (≈78%)* | ≈2.1* |
-| Dense only | bge-small-en-v1.5, local | ≈45/64 (≈70%)* | ≈2.4* |
-| Hybrid | both, merged with Reciprocal Rank Fusion | **58/64 (91%)** | **1.6** |
+## Results
 
-\* Approximate estimates, not measured. Hybrid row is measured.
+| Retriever | hit@5 | Mean hit rank |
+|---|---|---|
+| Dense only (bge-small) | [[FILL]] | [[FILL]] |
+| BM25 only (FTS5) | [[FILL]] | [[FILL]] |
+| **Hybrid (RRF)** | **91% (58/64)** | **1.6** |
 
-## Where pure vectors miss
+## Where dense failed
 
-- **[TBD: pattern 1].** For example: questions that hinge on an exact identifier. Use a synthetic one, like "torque spec for part ABC-1234".
-- **[TBD: pattern 2]**
-- Why: embeddings are good at paraphrase and bad at "this exact string". BM25 is the opposite.
+[[FILL: 1–2 anonymised examples, e.g. a question with a part number or error code where the dense top 5 missed and BM25 caught it.]] Embeddings map "error E-214" close to every other error code. To a small embedding model, the exact token that matters looks like noise.
 
-## Why RRF instead of a weighted score
+## Where BM25 failed
 
-- BM25 scores and cosine similarities live on different scales; weighting them means tuning a constant that drifts with the corpus.
-- RRF only uses rank positions, so there's nothing to calibrate. **[TBD: did you try weighted fusion? numbers?]**
+[[FILL: 1 example, e.g. a paraphrased question ("machine won't start after cleaning") where the manual uses different words.]] Keyword search has no idea that "won't start" and "fails to initialise" mean the same thing.
+
+## Why RRF
+
+RRF only uses ranks, not scores. So I didn't have to normalise BM25 scores against cosine similarities, which live on completely different scales. A chunk that ranks well in either list rises, and a chunk that ranks well in both rises more. It's a few lines of code and has no parameters to tune beyond k.
 
 ## The 6 misses
 
-- **[TBD: what the 6 hybrid misses have in common, e.g. OCR noise, tables, cross-page answers]**
+[[FILL: what the 6 failed questions had in common, e.g. answers split across tables, OCR noise in scanned manuals, questions needing two sections.]] These cases are my next work items, not retrieval-method problems.
 
-## What I'd do next
+## Caveats
 
-- **[TBD: e.g. reranker, better OCR on scanned manuals, more questions]**
+64 questions is a small eval set, and one person wrote all of them. These numbers say "hybrid is clearly better on *this* corpus", not "hybrid always wins". What made the comparison trustworthy was that the set was fixed and re-run after every change.
 
 ## Takeaway
 
-Evals before opinions: measure on your own questions before choosing a retriever. For manuals full of identifiers, hybrid wasn't optional.
+If your documents contain identifiers (part numbers, codes, SKUs, clause numbers), don't ship pure vector search. Add BM25, fuse with RRF, and measure. Writing the 64 questions took an afternoon and settled the decision.
+
+*I'm rebuilding this approach in public as [Service Manual Copilot](/#project-copilot), on FAA maintenance handbooks, with the same eval harness running in CI.*

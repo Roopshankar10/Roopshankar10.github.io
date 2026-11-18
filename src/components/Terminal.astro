@@ -68,7 +68,7 @@
       academicProjects.map((p) => `${dim(p.date ?? '')}  ${esc(p.name)}`).join('\n'),
     experience: () =>
       trace
-        .map((s) => `${ok('span')} ${esc(s.name)} ${dim(`· ${s.meta} · ${s.when}`)}` + (s.children ?? []).map((c) => `\n  └ ${esc(c.name)} ${dim(`· ${c.meta}`)}`).join(''))
+        .map((s) => `${ok('span')} ${esc(s.name)} ${dim(`· ${s.meta} · ${s.when}`)}` + (s.impact ?? []).map((b) => `\n  └ ${esc(b.text)}`).join(''))
         .join('\n'),
     skills: () => clusterOrder.map((c) => `${ok(c.padEnd(18))} ${esc(skills.filter((s) => s.cluster === c).map((s) => s.name).join(', '))}`).join('\n'),
     eval: (args) => {

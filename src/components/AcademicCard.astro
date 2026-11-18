@@ -1,6 +1,7 @@
 ---
 // Compact card for B.Tech projects: same structure as a model card, at a lighter weight.
 import type { Project } from '../data/content';
+import Arrow from './Arrow.astro';
 interface Props {
   project: Project;
 }
@@ -16,7 +17,7 @@ const { project: p } = Astro.props;
       p.pipeline.map((s, i) => (
         <li class="flex items-center">
           <span class="rounded border border-line-strong px-1.5 py-0.5 text-fg-muted" title={s.detail}>{s.stage}</span>
-          {i < p.pipeline.length - 1 && <span class="px-1 text-fg-subtle" aria-hidden="true">→</span>}
+          {i < p.pipeline.length - 1 && <Arrow />}
         </li>
       ))
     }

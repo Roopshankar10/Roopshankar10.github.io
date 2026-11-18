@@ -44,7 +44,12 @@ const cases = [
   // B.Tech projects
   ['Tell me about his PUBG project', 'qa:proj-pubg'], ['did he do any fraud detection', 'qa:proj-fraud|qa:proj-fraud-results'],
   ['what was the book mood project about', 'qa:proj-book-mood|book-mood-problem'], ['what projects did he do in college', 'qa:projects-academic'],
-  ['has he worked with LSTM', 'qa:proj-book-mood|book-mood-architecture|book-mood-problem'], ['does he know anomaly detection', 'qa:skill-anomaly-detection'],
+  ['has he worked with LSTM', 'qa:skill-lstm-gru-sequence-models|qa:proj-book-mood|book-mood-architecture|book-mood-problem'], ['does he know anomaly detection', 'qa:skill-anomaly-detection'],
+  // recruiter questions from the brief
+  ['How does he evaluate retrieval?', 'qa:faq-evaluate'], ['What happens when the manuals don’t have the answer?', 'qa:faq-hallucination'],
+  ['does he know azure', 'qa:skill-azure-api-management'], ['is he good at deep learning', 'qa:skill-lstm-gru-sequence-models'],
+  ['does he know machine learning', 'qa:skill-supervised-learning-classification'], ['which LLMs has he used', 'qa:skill-llama-3-via-ollama|qa:skills-all'],
+  ['preferred location?', 'qa:faq-cities'],
   // intent phrased indirectly
   ['how does he deal with hallucinations', 'qa:faq-hallucination'], ['what was the toughest problem he solved', 'qa:faq-hardest'],
   ['did he build it alone', 'qa:faq-ownership'], ['has any of his work shipped to production', 'qa:faq-production'],

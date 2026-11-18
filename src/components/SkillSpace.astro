@@ -49,7 +49,7 @@ const centroids = clusterOrder.map((c) => {
 const usedText = (p: P) => (p.used.length ? `used in ${p.used.map((u) => projectName[u]).join(', ')}` : 'not tied to a project on this page');
 ---
 
-<figure data-skill-space class="overflow-hidden rounded-xl border border-line bg-surface">
+<figure data-skill-space class="hidden overflow-hidden rounded-xl border border-line bg-surface sm:block">
   <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2.5 font-mono text-xs text-fg-subtle sm:px-5">
     <span class="text-mint">embedding space</span>
     <span>{data.method ? data.method.replace('Xenova/', '') : 'grouped layout (embeddings unavailable in this build)'}</span>
