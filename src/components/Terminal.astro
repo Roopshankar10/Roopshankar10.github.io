@@ -23,7 +23,7 @@
 
 <script>
   import { profile } from '../data/site';
-  import { projects, trace, skills, clusterOrder, certifications, education } from '../data/content';
+  import { projects, academicProjects, trace, skills, clusterOrder, certifications, education } from '../data/content';
 
   const dlg = document.getElementById('term') as HTMLDialogElement;
   const out = dlg.querySelector<HTMLElement>('[data-term-out]')!;
@@ -63,7 +63,9 @@
     projects: () =>
       projects
         .map((p) => `${p.status === 'coming-soon' ? num('soon') : ok('live')}  ${esc(p.name)}  ${dim(p.context)}`)
-        .join('\n'),
+        .join('\n') +
+      `\n${dim('— b.tech —')}\n` +
+      academicProjects.map((p) => `${dim(p.date ?? '')}  ${esc(p.name)}`).join('\n'),
     experience: () =>
       trace
         .map((s) => `${ok('span')} ${esc(s.name)} ${dim(`· ${s.meta} · ${s.when}`)}` + (s.children ?? []).map((c) => `\n  └ ${esc(c.name)} ${dim(`· ${c.meta}`)}`).join(''))

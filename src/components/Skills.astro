@@ -1,7 +1,7 @@
 ---
 // Plain grouped list. The interactive embedding-space scatter (M4) sits on top of this
 // and never replaces it, so every skill stays readable without hovering.
-import { skills, clusterOrder, projects } from '../data/content';
+import { skills, clusterOrder, allProjects as projects } from '../data/content';
 const name = (id: string) => projects.find((p) => p.id === id)?.name ?? id;
 ---
 

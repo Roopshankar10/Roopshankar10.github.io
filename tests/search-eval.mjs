@@ -41,6 +41,10 @@ const cases = [
   ['What were the eval results?', 'sia-evals|qa:proj-sia-results|key-results'], ['What is the hit@5?', 'sia-evals|key-results|qa:proj-sia-results'],
   ['What is RRF?', 'sia-architecture|principle-3|sia-decisions|skills-retrieval|qa:skill-hybrid-search-bm25-dense-rrf'],
   ['How many chunks were indexed?', 'sia-architecture|qa:proj-sia-stack|qa:proj-sia'],
+  // B.Tech projects
+  ['Tell me about his PUBG project', 'qa:proj-pubg'], ['did he do any fraud detection', 'qa:proj-fraud|qa:proj-fraud-results'],
+  ['what was the book mood project about', 'qa:proj-book-mood|book-mood-problem'], ['what projects did he do in college', 'qa:projects-academic'],
+  ['has he worked with LSTM', 'qa:proj-book-mood|book-mood-architecture|book-mood-problem'], ['does he know anomaly detection', 'qa:skill-anomaly-detection'],
   // intent phrased indirectly
   ['how does he deal with hallucinations', 'qa:faq-hallucination'], ['what was the toughest problem he solved', 'qa:faq-hardest'],
   ['did he build it alone', 'qa:faq-ownership'], ['has any of his work shipped to production', 'qa:faq-production'],

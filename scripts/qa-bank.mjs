@@ -48,11 +48,14 @@ const CLUSTER_PHRASE = {
 const PROJECT_ALIASES = {
   sia: ['service instructions assistant', 'service instruction assistant', 'service instructions', 'service manual assistant', 'manual assistant', 'manuals assistant', 'service manuals', 'manufacturing ai', 'tcs manufacturing', 'technician'],
   biotech: ['biotech', 'biotechnology', 'life sciences', 'plm', 'jira', 'rtm', 'traceability', 'knowledge assistant', 'enterprise genai', 'client project'],
-  copilot: ['service manual copilot', 'copilot', 'faa', 'public project', 'side project', 'personal project'],
+  copilot: ['service manual copilot', 'copilot', 'faa', 'public project', 'side project'],
+  pubg: ['pubg', 'battlegrounds', 'hacker', 'hackers', 'cheat', 'cheaters', 'cheating', 'gaming', 'game'],
+  'book-mood': ['book', 'books', 'mood', 'genre', 'storygraph', 'lstm', 'gru', 'reading'],
+  fraud: ['credit card', 'fraud', 'transaction', 'transactions', 'banking'],
 };
 
 export async function buildQaBank() {
-  const { profile, projects, trace, skills, clusterOrder, education, certifications, faq, faqAnchor } = await load();
+  const { profile, projects: workProjects, academicProjects, allProjects: projects, trace, skills, clusterOrder, education, certifications, faq, faqAnchor } = await load();
   const nameOf = Object.fromEntries(projects.map((p) => [p.id, p.name]));
   const B = [];
 
@@ -84,7 +87,12 @@ export async function buildQaBank() {
   B.push({
     id: 'projects-all', kind: 'gen', q: 'What projects have you worked on?', anchor: '#projects',
     variants: ['What projects have you worked on?', 'Tell me about your projects', 'What have you built?', 'Show me your work', 'What are your main projects?'],
-    a: projects.map((p) => `${p.name} (${p.context})`).join('; ') + '.',
+    a: `${workProjects.map((p) => `${p.name} (${p.context})`).join('; ')}. Earlier, during my B.Tech: ${list(academicProjects.map((p) => `${p.name} (${p.date})`))}.`,
+  });
+  B.push({
+    id: 'projects-academic', kind: 'gen', q: 'What projects did you do in college?', anchor: `#project-${academicProjects[0].id}`,
+    variants: ['What projects did you do in college?', 'What were your B.Tech projects?', 'Tell me about your academic projects', 'What did you build as a student?', 'Any machine learning projects?', 'What are your final year projects?'],
+    a: `During my B.Tech I built ${list(academicProjects.map((p) => `${p.name} (${p.date}: ${p.stack.filter((x) => x !== 'Python').join(', ')})`))}.`,
   });
   for (const p of projects) {
     const al = PROJECT_ALIASES[p.id] ?? [p.name.toLowerCase()];
@@ -94,7 +102,7 @@ export async function buildQaBank() {
     B.push({
       id: `proj-${p.id}`, kind: 'gen', q: `Tell me about ${p.name}`, anchor: `#project-${p.id}`, entities: al,
       variants: [`Tell me about ${p.name}`, `What is ${p.name}?`, `What did you build in ${p.name}?`, `Explain ${p.name}`, `What problem does ${p.name} solve?`],
-      a: `${p.name} (${p.context}${soon ? ', coming soon' : ''}). ${p.problem}${p.metrics.length ? ` Results: ${results}` : ''}`,
+      a: `${p.name} (${p.context}${p.date ? `, ${p.date}` : ''}${soon ? ', coming soon' : ''}). ${p.problem}${p.metrics.length ? ` Results: ${results}` : ''}`,
     });
     if (steps.length)
       B.push({

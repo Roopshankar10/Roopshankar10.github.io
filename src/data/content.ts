@@ -3,7 +3,7 @@
 // Confidentiality: employer/client work is described only at the level of the brief.
 
 export type PipelineStep = {
-  stage: 'ingest' | 'chunk' | 'embed' | 'retrieve' | 'generate' | 'validate' | 'route';
+  stage: 'ingest' | 'chunk' | 'embed' | 'retrieve' | 'generate' | 'validate' | 'route' | 'data' | 'preprocess' | 'features' | 'model' | 'evaluate';
   detail: string;
 };
 
@@ -16,6 +16,8 @@ export type Metric = {
 
 export type Project = {
   id: string;
+  tier?: 'work' | 'academic'; // academic = B.Tech projects, shown below current work
+  date?: string; // e.g. 'Mar 2024'
   name: string;
   context: string;
   status: 'shipped' | 'prototype' | 'coming-soon';
@@ -117,6 +119,77 @@ export const projects: Project[] = [
   },
 ];
 
+
+// ---------- Earlier work: B.Tech projects (from Roop's earlier resume) ----------
+// Listed newest first. No metrics were recorded for these, so none are shown.
+export const academicProjects: Project[] = [
+  {
+    id: 'pubg',
+    tier: 'academic',
+    date: 'Mar 2024',
+    name: 'PUBG player hacker detection',
+    context: 'B.Tech project · machine learning',
+    status: 'shipped',
+    problem:
+      'Identify likely cheaters in PlayerUnknown’s Battlegrounds (PUBG) from in-game stats and player behaviour, to help keep the game fair for genuine players.',
+    pipeline: [
+      { stage: 'data', detail: 'In-game player statistics and behaviour' },
+      { stage: 'features', detail: 'Feature extraction from player stats' },
+      { stage: 'model', detail: 'Anomaly detection plus supervised classification' },
+      { stage: 'evaluate', detail: 'Classification of players as genuine or likely hackers' },
+    ],
+    decisions: ['Combined anomaly detection with supervised classification algorithms', 'Built features from in-game stats and behaviour'],
+    metrics: [],
+    metricsNote: 'Academic project · no recorded metrics.',
+    stack: ['Python', 'Machine learning', 'Anomaly detection', 'Classification'],
+    links: [],
+  },
+  {
+    id: 'book-mood',
+    tier: 'academic',
+    date: 'Aug 2023',
+    name: 'Book mood prediction from descriptions',
+    context: 'B.Tech project · deep learning and NLP',
+    status: 'shipped',
+    problem:
+      'Classify the mood of a book from its description, to improve book recommendations based on a reader’s history.',
+    pipeline: [
+      { stage: 'data', detail: 'Book descriptions from Storygraph' },
+      { stage: 'preprocess', detail: 'Tokenization of descriptions' },
+      { stage: 'model', detail: 'Deep learning model with LSTM/GRU layers, supervised training' },
+      { stage: 'evaluate', detail: 'Mood categories feed a recommendation system' },
+    ],
+    decisions: ['Recurrent layers (LSTM/GRU) to model the description text', 'Mood labels used to enhance recommendations from reading history'],
+    metrics: [],
+    metricsNote: 'Academic project · no recorded metrics.',
+    stack: ['Python', 'Deep learning', 'NLP', 'LSTM', 'GRU'],
+    links: [],
+  },
+  {
+    id: 'fraud',
+    tier: 'academic',
+    date: 'Mar 2023',
+    name: 'Credit card fraud detection',
+    context: 'B.Tech project · machine learning',
+    status: 'shipped',
+    problem: 'Classify anonymized credit card transactions as fraudulent or genuine.',
+    pipeline: [
+      { stage: 'data', detail: 'Anonymized, labelled credit card transactions' },
+      { stage: 'preprocess', detail: 'Cleaning and normalization' },
+      { stage: 'model', detail: 'Machine learning classification algorithms' },
+      { stage: 'evaluate', detail: 'Classification report; matplotlib visualizations' },
+    ],
+    decisions: ['Compared classification techniques to pick a suitable model', 'Visualized the data with matplotlib'],
+    metrics: [],
+    metricsNote: 'Academic project · no recorded metrics.',
+    stack: ['Python', 'Machine learning', 'Classification', 'Matplotlib'],
+    links: [],
+  },
+];
+
+/** Every project: current work first, then B.Tech projects. Used by search, terminal and the trace. */
+export const allProjects: Project[] = [...projects, ...academicProjects];
+
 // ---------- Experience as a trace ----------
 export type Span = {
   name: string;
@@ -135,6 +208,11 @@ export const trace: Span[] = [
     start: '2020-01',
     end: '2024-12',
     when: '2020–2024',
+    children: [
+      { name: 'Credit card fraud detection', meta: 'B.Tech project', start: '2023-03', end: '2023-03', when: 'Mar 2023', projectId: 'fraud' },
+      { name: 'Book mood prediction', meta: 'B.Tech project', start: '2023-08', end: '2023-08', when: 'Aug 2023', projectId: 'book-mood' },
+      { name: 'PUBG player hacker detection', meta: 'B.Tech project', start: '2024-03', end: '2024-03', when: 'Mar 2024', projectId: 'pubg' },
+    ],
   },
   {
     name: 'Tata Consultancy Services',
@@ -181,9 +259,11 @@ export const skills: { name: string; cluster: SkillCluster; usedIn: string[] }[]
   { name: 'scikit-learn', cluster: 'ML / NLP', usedIn: [] },
   { name: 'Pandas', cluster: 'ML / NLP', usedIn: [] },
   { name: 'NumPy', cluster: 'ML / NLP', usedIn: [] },
-  { name: 'Machine learning', cluster: 'ML / NLP', usedIn: [] },
-  { name: 'Deep learning', cluster: 'ML / NLP', usedIn: [] },
-  { name: 'NLP', cluster: 'ML / NLP', usedIn: [] },
+  { name: 'Machine learning', cluster: 'ML / NLP', usedIn: ['pubg', 'fraud'] },
+  { name: 'Deep learning', cluster: 'ML / NLP', usedIn: ['book-mood'] },
+  { name: 'NLP', cluster: 'ML / NLP', usedIn: ['book-mood'] },
+  { name: 'Supervised learning', cluster: 'ML / NLP', usedIn: ['pubg', 'book-mood', 'fraud'] },
+  { name: 'Anomaly detection', cluster: 'ML / NLP', usedIn: ['pubg'] },
 ];
 
 export const clusterOrder: SkillCluster[] = ['Retrieval', 'LLM orchestration', 'Evaluation', 'Backend / Deploy', 'ML / NLP'];

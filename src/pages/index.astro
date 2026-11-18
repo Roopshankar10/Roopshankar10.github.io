@@ -9,7 +9,8 @@ import AskPanel from '../components/AskPanel.astro';
 import SkillSpace from '../components/SkillSpace.astro';
 import { profile } from '../data/site';
 import { getCollection } from 'astro:content';
-import { projects, principles, education, certifications } from '../data/content';
+import { projects, academicProjects, principles, education, certifications } from '../data/content';
+import AcademicCard from '../components/AcademicCard.astro';
 const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft) - Number(b.data.draft));
 ---
 
@@ -21,6 +22,12 @@ const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft)
   <SectionShell id="projects" index={1} label="projects" title="Projects, as model cards">
     <div class="space-y-6">
       {projects.map((p) => <ModelCard project={p} />)}
+    </div>
+    <h3 class="mt-14 font-mono text-xs uppercase tracking-wider text-fg-subtle">
+      Earlier work · B.Tech projects
+    </h3>
+    <div class="mt-4 grid gap-4 md:grid-cols-3">
+      {academicProjects.map((p) => <AcademicCard project={p} />)}
     </div>
   </SectionShell>
 

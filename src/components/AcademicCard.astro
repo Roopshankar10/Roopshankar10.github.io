@@ -1,0 +1,30 @@
+---
+// Compact card for B.Tech projects: same structure as a model card, at a lighter weight.
+import type { Project } from '../data/content';
+interface Props {
+  project: Project;
+}
+const { project: p } = Astro.props;
+---
+
+<article id={`project-${p.id}`} aria-labelledby={`project-${p.id}-title`} class="flex flex-col rounded-xl border border-line bg-surface p-5">
+  <p class="font-mono text-xs text-fg-subtle">{p.date} · {p.context.replace('B.Tech project · ', '')}</p>
+  <h4 id={`project-${p.id}-title`} class="mt-1.5 font-semibold tracking-tight text-fg">{p.name}</h4>
+  <p class="mt-2 text-sm leading-relaxed text-fg-muted">{p.problem}</p>
+  <ol class="mt-4 flex flex-wrap items-center gap-y-1.5 font-mono text-[11px]" aria-label="Pipeline stages">
+    {
+      p.pipeline.map((s, i) => (
+        <li class="flex items-center">
+          <span class="rounded border border-line-strong px-1.5 py-0.5 text-fg-muted" title={s.detail}>{s.stage}</span>
+          {i < p.pipeline.length - 1 && <span class="px-1 text-fg-subtle" aria-hidden="true">→</span>}
+        </li>
+      ))
+    }
+  </ol>
+  <ul class="mt-3 space-y-1 text-sm text-fg-muted">
+    {p.pipeline.map((s) => <li><span class="font-mono text-xs text-fg-subtle">{s.stage}:</span> {s.detail}</li>)}
+  </ul>
+  <ul class="mt-auto flex flex-wrap gap-1.5 pt-4" aria-label="Stack">
+    {p.stack.map((s) => <li class="rounded border border-line px-2 py-0.5 font-mono text-xs text-fg-muted">{s}</li>)}
+  </ul>
+</article>

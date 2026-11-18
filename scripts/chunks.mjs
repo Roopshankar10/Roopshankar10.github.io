@@ -11,7 +11,7 @@ const load = async () => ({
 const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 export async function buildChunks() {
-  const { profile, heroStats, projects, trace, skills, clusterOrder, principles, education, certifications, faq, faqAnchor } = await load();
+  const { profile, heroStats, allProjects: projects, trace, skills, clusterOrder, principles, education, certifications, faq, faqAnchor } = await load();
   const C = [];
   const add = (id, section, anchor, title, text) => C.push({ id, section, anchor, title, text });
 
@@ -28,7 +28,7 @@ export async function buildChunks() {
     const a = `#project-${p.id}`;
     const soon = p.status === 'coming-soon';
     add(`${p.id}-problem`, 'Projects', a, p.name,
-      `${p.name} (${p.context}${soon ? ', coming soon' : ''}). ${p.problem}`);
+      `${p.name} (${p.context}${p.date ? `, ${p.date}` : ''}${soon ? ', coming soon' : ''}). ${p.problem}`);
     const steps = p.pipeline.filter((s) => s.detail).map((s) => `${s.stage}: ${s.detail}`);
     if (steps.length)
       add(`${p.id}-architecture`, 'Projects', a, `${p.name} · architecture`,

@@ -12,6 +12,7 @@ const pct = (ms: number) => ((ms - AXIS_START) / (NOW - AXIS_START)) * 100;
 function duration(s: Span) {
   if (!s.start || !s.end) return '';
   if (s.when === '2020–2024') return '4y';
+  if (s.start === s.end) return s.when ?? ''; // single-month project
   const months = Math.floor((toMs(s.end) - toMs(s.start)) / (1000 * 60 * 60 * 24 * 30.44));
   const y = Math.floor(months / 12);
   const m = months % 12;

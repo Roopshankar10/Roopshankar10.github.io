@@ -3,7 +3,7 @@
 // projected to 2D with PCA at build time (scripts/prepare-search.mjs). Rendered as static SVG,
 // so it's visible without JS; hover/focus a point to highlight the projects that use it.
 import data from '../data/generated/skills-2d.json';
-import { skills, clusterOrder, projects } from '../data/content';
+import { skills, clusterOrder, allProjects as projects } from '../data/content';
 
 const W = 680, H = 380, PAD = 34;
 const projectName = Object.fromEntries(projects.map((p) => [p.id, p.name]));
