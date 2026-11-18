@@ -19,6 +19,7 @@ const buildSteps = [
 ];
 const querySteps = [
   ['embed', 'Your question, embedded in a Web Worker with transformers.js (WebAssembly)'],
+  ['match Q&A', `Compared question-to-question against ${index.faq.length} answered recruiter questions and their paraphrases`],
   ['retrieve', 'Cosine similarity over every passage, plus BM25 keyword scores'],
   ['fuse', 'Reciprocal Rank Fusion (k = 60) merges the two rankings'],
   ['gate', 'Evidence check: no qualifying passage → NOT_FOUND'],
@@ -64,8 +65,9 @@ const querySteps = [
     <section class="mt-12" aria-labelledby="evals">
       <h2 id="evals" class="text-xl font-semibold">Evals before opinions</h2>
       <p class="mt-3 max-w-3xl text-fg-muted">
-        Every build runs a small retrieval eval before deploying: {evalSummary.inScope} questions the page can answer
-        (the right passage must be in the top 3), and {evalSummary.outOfScope} it can't (the answer must be NOT_FOUND).
+        Every build runs a small eval before deploying: {evalSummary.inScope} questions the page can answer (the right
+        Q&A answer, or the right passage in the top 3, including paraphrases the site has never seen), and
+        {evalSummary.outOfScope} it can't (the answer must be NOT_FOUND). Misses stay in the score instead of being tuned away.
       </p>
       <ul class="mt-5 grid gap-3 sm:grid-cols-2">
         {
@@ -94,6 +96,15 @@ const querySteps = [
           closest passage, close to real answers. So a passage only counts as evidence if it contains at least half
           of the question's meaningful terms, or its similarity is high on its own (≥ 0.68). Otherwise the answer is
           NOT_FOUND.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold">Answered questions first</h3>
+        <p class="mt-1 text-fg-muted">
+          Recruiter questions ("What's your notice period?") rarely look like any paragraph on the page, so matching them
+          against passages fails. Instead, I wrote answers to common questions, and your question is compared against
+          those questions and their paraphrases (question-to-question similarity ≥ 0.80, calibrated on unseen
+          paraphrases). A match is shown as my answer, with the passages that support it underneath.
         </p>
       </div>
       <div>

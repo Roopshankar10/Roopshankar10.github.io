@@ -148,3 +148,45 @@ export function search(
   }
   return { kind: 'answer', hits: hits.slice(0, TOP_K), mode, bestCosine };
 }
+
+// ---------- Q&A matching (question-to-question) ----------
+export type FaqEntry = { id: string; group: string; q: string; a: string; anchor: string; variants: string[]; embs?: string[] };
+export type FaqMatch = { faq: FaqEntry; score: number; via: 'dense' | 'keyword'; matched: string };
+
+// Calibrated on bge-small-en-v1.5 (symmetric, no query prefix): unseen paraphrases scored 0.80–0.98,
+// off-topic questions mostly 0.52–0.77.
+export const FAQ_COSINE = 0.8;
+const FAQ_JACCARD = 0.6;
+
+const allTokens = (s: string) => new Set(tokenize(s.replace(/[’']/g, ' ')));
+
+function jaccard(a: Set<string>, b: Set<string>) {
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  return inter / (a.size + b.size - inter || 1);
+}
+
+/** symVec = normalized query embedding WITHOUT the retrieval prefix, or null in keyword mode. */
+export function matchFaq(query: string, faqs: FaqEntry[], faqVecs: Float32Array[][] | null, symVec: ArrayLike<number> | null): FaqMatch | null {
+  let best: FaqMatch | null = null;
+  if (faqVecs && symVec) {
+    for (let i = 0; i < faqs.length; i++)
+      for (let j = 0; j < faqVecs[i].length; j++) {
+        const s = dot(faqVecs[i][j], symVec);
+        if (s >= FAQ_COSINE && (!best || s > best.score)) best = { faq: faqs[i], score: s, via: 'dense', matched: faqs[i].variants[j] };
+      }
+    if (best) return best;
+  }
+  // Keyword path (fallback mode, or near-verbatim questions): word overlap with a known variant,
+  // and the variant must share at least one meaningful word with the question if it has any.
+  const qt = allTokens(query);
+  const qc = new Set(contentTerms(query));
+  for (const f of faqs)
+    for (const v of f.variants) {
+      const vt = allTokens(v);
+      const sharesContent = !qc.size || [...qc].some((t) => vt.has(t));
+      const s = jaccard(qt, vt);
+      if (sharesContent && s >= FAQ_JACCARD && (!best || s > best.score)) best = { faq: f, score: s, via: 'keyword', matched: v };
+    }
+  return best;
+}

@@ -7,6 +7,7 @@ import Trace from '../components/Trace.astro';
 import Skills from '../components/Skills.astro';
 import AskPanel from '../components/AskPanel.astro';
 import SkillSpace from '../components/SkillSpace.astro';
+import FaqSection from '../components/FaqSection.astro';
 import { profile } from '../data/site';
 import { getCollection } from 'astro:content';
 import { projects, principles, education, certifications } from '../data/content';
@@ -48,7 +49,11 @@ const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft)
     </ol>
   </SectionShell>
 
-  <SectionShell id="education" index={5} label="education" title="Education and certifications">
+  <SectionShell id="faq" index={5} label="q&a" title="Quick answers">
+    <FaqSection />
+  </SectionShell>
+
+  <SectionShell id="education" index={6} label="education" title="Education and certifications">
     <div class="grid gap-4 md:grid-cols-2">
       {
         education.map((e) => (
@@ -75,7 +80,7 @@ const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft)
     </div>
   </SectionShell>
 
-  <SectionShell id="notes" index={6} label="notes" title="Notes">
+  <SectionShell id="notes" index={7} label="notes" title="Notes">
     <ul class="space-y-3">
       {
         notes.map((n) => {
@@ -96,7 +101,7 @@ const notes = (await getCollection('notes')).sort((a, b) => Number(a.data.draft)
     </ul>
   </SectionShell>
 
-  <SectionShell id="contact" index={7} label="contact" title="Get in touch">
+  <SectionShell id="contact" index={8} label="contact" title="Get in touch">
     <ul class="grid gap-3 font-mono text-sm sm:grid-cols-3">
       <li>
         <a class="block rounded-md border border-line p-4 hover:border-mint" href={`mailto:${profile.email}`}>

@@ -33,6 +33,7 @@ export const sections = [
   { id: 'experience', label: 'Experience' },
   { id: 'skills', label: 'Skills' },
   { id: 'principles', label: 'How I build' },
+  { id: 'faq', label: 'Q&A' },
   { id: 'education', label: 'Education' },
   { id: 'notes', label: 'Notes' },
   { id: 'contact', label: 'Contact' },

@@ -12,7 +12,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildChunks, buildSkillTexts } from './chunks.mjs';
+import { buildChunks, buildSkillTexts, buildFaq } from './chunks.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MODEL_ID = 'Xenova/bge-small-en-v1.5';
@@ -104,14 +104,17 @@ async function main() {
   await copyOrt();
   const chunks = await buildChunks();
   const skillTexts = await buildSkillTexts();
+  const faq = await buildFaq();
+  const faqTexts = faq.flatMap((f) => f.variants);
   const dtype = await ensureModel();
 
-  let vectors = null, skillVecs = null;
+  let vectors = null, skillVecs = null, faqVecs = null;
   if (dtype) {
     try {
-      const all = await embedAll(dtype, [...chunks.map((c) => `${c.title}. ${c.text}`), ...skillTexts.map((s) => s.text)]);
+      const all = await embedAll(dtype, [...chunks.map((c) => `${c.title}. ${c.text}`), ...skillTexts.map((s) => s.text), ...faqTexts]);
       vectors = all.slice(0, chunks.length);
-      skillVecs = all.slice(chunks.length);
+      skillVecs = all.slice(chunks.length, chunks.length + skillTexts.length);
+      faqVecs = all.slice(chunks.length + skillTexts.length);
     } catch (e) {
       log('embedding failed → keyword-only index.', String(e.message ?? e));
     }
@@ -123,6 +126,13 @@ async function main() {
     model: vectors ? { id: MODEL_ID, dtype, dims: vectors[0].length, pooling: 'cls',
       queryPrefix: 'Represent this sentence for searching relevant passages: ' } : null,
     chunks: chunks.map((c, i) => ({ ...c, ...(vectors ? { emb: b64(vectors[i]) } : {}) })),
+    faq: (() => {
+      let k = 0;
+      return faq.map((f) => ({
+        ...f,
+        ...(faqVecs ? { embs: f.variants.map(() => b64(faqVecs[k++])) } : {}),
+      }));
+    })(),
   };
   await fs.writeFile(path.join(root, 'public/search-index.json'), JSON.stringify(index));
 
@@ -134,7 +144,7 @@ async function main() {
     JSON.stringify({ method: coords ? `PCA of ${MODEL_ID} embeddings` : null, points: skillTexts.map((s, i) => ({ name: s.name, xy: coords?.[i] ?? null })) }, null, 1),
   );
 
-  log(`${chunks.length} chunks · ${vectors ? `dense (${dtype})` : 'keyword-only'} · ${Date.now() - t0} ms`);
+  log(`${chunks.length} chunks · ${faq.length} Q&A · ${vectors ? `dense (${dtype})` : 'keyword-only'} · ${Date.now() - t0} ms`);
 }
 
 main().catch((e) => {
