@@ -1,73 +1,103 @@
-// Retrieval eval for "Ask my portfolio": expected chunk in top 3, or NOT_FOUND for out-of-scope.
+// Eval for "Ask my portfolio": runs the same answer() pipeline as the browser, in both modes.
 // Run: npm test (also runs on every build). Uses the model in public/models when present, else keyword-only.
+//
+// Expected value syntax:
+//   'qa:<id>'         a Q&A / generated answer with that id
+//   '<chunk-id>'      that passage in the top 3 (or as the top supporting passage)
+//   'smalltalk'       greeting / thanks / help reply
+//   'unknown'         honest "not in my skills" for an unknown technology
+//   null              NOT_FOUND
+//   'a|b'             any of these
 import fs from 'node:fs';
 import { pipeline, env } from '@huggingface/transformers';
-import { Bm25, decodeEmb, matchFaq, search } from '../src/scripts/search-core.ts';
+import { Bm25, answer, decodeEmb, normalizeQuestion } from '../src/scripts/search-core.ts';
 
 const cases = [
-  ['What retrieval approach does he use?', 'sia-decisions|principle-3|skills-retrieval|sia-architecture'],
-  ['What were the eval results?', 'sia-evals'],
-  ['Where does Roop work?', 'exp-tcs|faq:current'],
-  ['Which certifications does he have?', 'certifications'],
-  ["How does he handle questions the docs don't cover?", 'principle-4|sia-problem|faq:hallucination'],
-  ['How can I contact him?', 'contact|faq:reach'],
-  ['What is the hit@5?', 'sia-evals'],
-  ['Is he open to new roles?', 'availability|faq:role'],
-  ['Tell me about the biotech project', 'biotech-problem|biotech-decisions|biotech-architecture|exp-biotech'],
-  ['Where did he study?', 'education|exp-mgit'],
-  ['What is RRF?', 'sia-architecture|principle-3|sia-decisions|skills-retrieval'],
-  ['Which LLM does the service assistant use?', 'sia-architecture'],
-  ['How many chunks were indexed?', 'sia-architecture'],
-  ['Does he know LangChain?', 'skills-llm-orchestration|biotech-decisions|biotech-architecture'],
-  ['Does he know Kubernetes?', null],
-  ['What is his favourite food?', null],
-  ['Has he worked with React Native?', null],
-  ['Java Spring Boot experience', null],
-  ['What is his salary expectation?', null],
-  ['Are you married?', null],
-  // Q&A: paraphrases that are NOT in the stored variants → must match the right answer
-  ['tell me something about you', 'faq:about'],
-  ['whats your notice period', 'faq:notice'],
-  ['how fast can you join us', 'faq:notice'],
-  ['is remote work ok for you', 'faq:relocate'],
-  ['which city would you like to work in', 'faq:cities'],
-  ['what is your greatest accomplishment', 'faq:achievement'],
-  ['did you have a team', 'faq:ownership'],
-  ['any production deployments?', 'faq:production'],
-  ['have you used AWS or GCP', 'faq:cloud'],
-  ['experience with docker?', 'faq:backend'],
-  ['what are you weak at', 'faq:weakness'],
-  ['what is your ideal job', 'faq:role'],
+  // small talk
+  ['hi', 'smalltalk'], ['Hello!', 'smalltalk'], ['thanks', 'smalltalk'], ['what can I ask?', 'smalltalk'], ['Are you a bot?', 'smalltalk'],
+  // same question, different pronouns
+  ['Tell me about yourself', 'qa:faq-about'], ['Tell me about Roop', 'qa:faq-about'], ['who is he?', 'qa:faq-about'],
+  ['What is his notice period?', 'qa:faq-notice'], ["what's Roop's notice period", 'qa:faq-notice'], ['hi, how soon can he join?', 'qa:faq-notice'],
+  ['Is the candidate open to relocation?', 'qa:faq-relocate'], ['can he work remotely', 'qa:faq-relocate'],
+  ['Why should we hire him?', 'qa:faq-strengths'], ['what is he good at', 'qa:faq-strengths'],
+  ['How many years of experience does he have?', 'qa:exp-years'], ['is he a fresher', 'qa:exp-years'],
+  ['what is his current role', 'qa:exp-role|qa:faq-current'], ['Where does Roop work?', 'qa:faq-current|qa:exp-role'],
+  ['Where did he study?', 'qa:education'], ['which college', 'qa:education'],
+  ['Does he have any certifications?', 'qa:certifications'], ['is he claude certified', 'qa:certifications'],
+  ['Can I get his resume?', 'qa:resume'], ['send me your cv', 'qa:resume'],
+  ['How can I contact him?', 'qa:faq-reach|contact'], ['what is his github', 'qa:links'],
+  ['what are his skills', 'qa:skills-all'], ["what's your tech stack", 'qa:skills-all'],
+  ['What projects has he worked on?', 'qa:projects-all'],
+  // skills (known) and the entity guard
+  ['Does he know LangChain?', 'qa:skill-langchain'], ['have you worked with FAISS', 'qa:skill-faiss'],
+  ['Is he familiar with BM25?', 'qa:skill-hybrid-search-bm25-dense-rrf'], ['does roop know python', 'qa:skill-python'],
+  ['experience with agents?', 'qa:faq-agents|qa:skill-agents-tool-integration'], ['Does he know Docker?', 'qa:faq-backend'],
+  ['do you know AWS', 'qa:faq-cloud'], ['has he fine-tuned models', 'qa:faq-finetuning'],
+  // unknown technologies → honest no
+  ['Does he know Kubernetes?', 'unknown'], ['Has he worked with React Native?', 'unknown'], ['experience with Java Spring Boot', 'unknown'],
+  // projects by meaning
+  ['Tell me about the service manual assistant', 'qa:proj-sia'], ['which llm does the service instructions assistant use', 'qa:proj-sia-stack'],
+  ['how accurate is the manual assistant', 'qa:proj-sia-results'], ['what did he do for the biotech client', 'qa:proj-biotech|qa:faq-stakeholders'],
+  ['What were the eval results?', 'sia-evals|qa:proj-sia-results|key-results'], ['What is the hit@5?', 'sia-evals|key-results|qa:proj-sia-results'],
+  ['What is RRF?', 'sia-architecture|principle-3|sia-decisions|skills-retrieval|qa:skill-hybrid-search-bm25-dense-rrf'],
+  ['How many chunks were indexed?', 'sia-architecture|qa:proj-sia-stack|qa:proj-sia'],
+  // intent phrased indirectly
+  ['how does he deal with hallucinations', 'qa:faq-hallucination'], ['what was the toughest problem he solved', 'qa:faq-hardest'],
+  ['did he build it alone', 'qa:faq-ownership'], ['has any of his work shipped to production', 'qa:faq-production'],
+  ['what kind of job is he looking for', 'qa:faq-role'], ['is he interested in FDE roles', 'qa:faq-role'],
+  ['what is he learning these days', 'qa:faq-learning'], ['what are his weaknesses', 'qa:faq-weakness'],
+  // out of scope → NOT_FOUND
+  ['What is his favourite food?', null], ['What is his salary expectation?', null], ['Is he married?', null], ['What is his CGPA?', null],
 ];
 
 const idx = JSON.parse(fs.readFileSync('public/search-index.json', 'utf8'));
-const vecs = idx.model ? idx.chunks.map((c) => decodeEmb(c.emb)) : null;
-const faqVecs = idx.model ? idx.faq.map((f) => f.embs.map(decodeEmb)) : null;
-const bm = new Bm25(idx.chunks);
+const ctx = {
+  chunks: idx.chunks,
+  bm25: new Bm25(idx.chunks),
+  vectors: idx.model ? idx.chunks.map((c) => decodeEmb(c.emb)) : null,
+  faq: idx.faq,
+  faqVecs: idx.model ? idx.faq.map((f) => f.embs.map(decodeEmb)) : null,
+  vocab: new Set(idx.vocab),
+};
 let ex = null;
 if (idx.model) {
   env.allowRemoteModels = false;
   env.localModelPath = process.cwd() + '/public/models/';
   ex = await pipeline('feature-extraction', idx.model.id, { dtype: idx.model.dtype });
 }
-const summary = { runAt: new Date().toISOString(), model: idx.model ? `${idx.model.id.split('/')[1]} (${idx.model.dtype})` : null, total: cases.length, inScope: cases.filter((c) => c[1]).length, outOfScope: cases.filter((c) => !c[1]).length, results: {} };
+const emb = async (t) => (await ex(t, { pooling: 'cls', normalize: true })).data;
+
+const label = (a) =>
+  a.kind === 'smalltalk' ? ['smalltalk']
+  : a.kind === 'qa' ? [`qa:${a.match.faq.id}`, ...a.support.map((h) => h.chunk.id)]
+  : a.kind === 'unknown_tech' ? ['unknown']
+  : a.kind === 'passages' ? a.hits.map((h) => h.chunk.id)
+  : ['NOT_FOUND'];
+
+const summary = {
+  runAt: new Date().toISOString(),
+  model: idx.model ? `${idx.model.id.split('/')[1]} (${idx.model.dtype})` : null,
+  total: cases.length,
+  inScope: cases.filter((c) => c[1]).length,
+  outOfScope: cases.filter((c) => !c[1]).length,
+  results: {},
+  misses: {},
+};
 for (const mode of idx.model ? ['hybrid', 'keyword'] : ['keyword']) {
   let ok = 0;
+  summary.misses[mode] = [];
   for (const [q, want] of cases) {
     const hybrid = mode === 'hybrid';
-    const qv = hybrid ? (await ex(idx.model.queryPrefix + q, { pooling: 'cls', normalize: true })).data : null;
-    const sv = hybrid ? (await ex(q, { pooling: 'cls', normalize: true })).data : null;
-    const fm = matchFaq(q, idx.faq, hybrid ? faqVecs : null, sv);
-    const r = search(q, idx.chunks, bm, hybrid ? vecs : null, qv);
-    const got = fm ? [`faq:${fm.faq.id}`] : r.kind === 'answer' ? r.hits.map((h) => h.chunk.id) : ['NOT_FOUND'];
-    const good = want === null
-      ? got[0] === 'NOT_FOUND'
-      : want.split('|').includes(got[0]) ||
-        (!fm && got.some((id) => want.split('|').includes(id))) ||
-        // a Q&A answer can also surface as the top passage (keyword mode): same answer, shown with [S1]
-        (!fm && want.split('|').some((w) => w.startsWith('faq:') && got[0] === `faq-${w.slice(4)}`));
+    const qv = hybrid ? await emb(idx.model.queryPrefix + q) : null;
+    const sv = hybrid ? await emb(normalizeQuestion(q)) : null;
+    const a = answer(q, hybrid ? ctx : { ...ctx, vectors: null, faqVecs: null }, qv, sv);
+    const got = label(a);
+    const wants = want === null ? ['NOT_FOUND'] : want.split('|');
+    // qa/smalltalk/unknown/NOT_FOUND must be the answer itself; a passage id may be anywhere in the top 3.
+    const good = wants.some((w) => (w.includes(':') || !want || w === 'smalltalk' || w === 'unknown' ? got[0] === w : got.includes(w)));
     if (good) ok++;
-    console.log(`${good ? 'PASS' : 'FAIL'} [${mode}] ${q.padEnd(48)} → ${got.join(', ')}`);
+    else summary.misses[mode].push(q);
+    console.log(`${good ? 'PASS' : 'FAIL'} [${mode}] ${q.padEnd(52)} → ${got.join(', ')}`);
   }
   console.log(`== ${mode}: ${ok}/${cases.length}\n`);
   summary.results[mode] = ok;

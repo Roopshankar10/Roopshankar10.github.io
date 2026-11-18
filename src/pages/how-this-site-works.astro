@@ -19,7 +19,8 @@ const buildSteps = [
 ];
 const querySteps = [
   ['embed', 'Your question, embedded in a Web Worker with transformers.js (WebAssembly)'],
-  ['match Q&A', `Compared question-to-question against ${index.faq.length} answered recruiter questions and their paraphrases`],
+  ['understand', 'Small talk gets a reply; “you”, “he” and “Roop” are rewritten to one form; “Do you know X?” is checked against everything on the site'],
+  ['match', `Compared by meaning against a bank of ${index.faq.length} answered questions (${index.faq.reduce((n: number, f: { variants: string[] }) => n + f.variants.length, 0)} phrasings) built from the profile`],
   ['retrieve', 'Cosine similarity over every passage, plus BM25 keyword scores'],
   ['fuse', 'Reciprocal Rank Fusion (k = 60) merges the two rankings'],
   ['gate', 'Evidence check: no qualifying passage → NOT_FOUND'],
@@ -99,12 +100,23 @@ const querySteps = [
         </p>
       </div>
       <div>
-        <h3 class="font-semibold">Answered questions first</h3>
+        <h3 class="font-semibold">Understand the question, then match by meaning</h3>
         <p class="mt-1 text-fg-muted">
-          Recruiter questions ("What's your notice period?") rarely look like any paragraph on the page, so matching them
-          against passages fails. Instead, I wrote answers to common questions, and your question is compared against
-          those questions and their paraphrases (question-to-question similarity ≥ 0.80, calibrated on unseen
-          paraphrases). A match is shown as my answer, with the passages that support it underneath.
+          Recruiters ask "What's his notice period?", "Does Roop know FAISS?" or just "hi". Those rarely look like
+          any paragraph on the page, so matching them against passages fails. Instead, every question is first rewritten
+          into one canonical form ("you", "he", "Roop" and "the candidate" are the same person), then compared by
+          meaning against a question bank: answers I wrote myself, plus questions generated from my profile data
+          for every skill, project, my education and my availability. A match at question-to-question similarity ≥ 0.80
+          (calibrated on paraphrases the bank has never seen) is shown as my answer, with supporting passages underneath.
+          Asking about a technology that appears nowhere on the site gets an honest "not in my portfolio", and when
+          nothing matches, the closest answerable questions are offered instead.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-semibold">Feedback closes the loop</h3>
+        <p class="mt-1 text-fg-muted">
+          Every answer has a Yes/No button. A "No" with a note tells me which questions the bank is missing, and
+          those become new entries, then new test cases.
         </p>
       </div>
       <div>

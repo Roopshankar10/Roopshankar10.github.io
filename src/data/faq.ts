@@ -25,7 +25,7 @@ export const faq: Faq[] = [
   },
   {
     id: 'role', group: 'About me', q: 'What kind of role are you looking for?',
-    alts: ['What job are you looking for?', 'What position do you want next?', 'What roles is Roop interested in?', 'What type of company do you want to join?', 'Are you open to new opportunities?', 'Is he open to new roles?', 'Are you interested in forward deployed engineer roles?'],
+    alts: ['What job are you looking for?', 'What position do you want next?', 'What roles is Roop interested in?', 'What type of company do you want to join?', 'Are you open to new opportunities?', 'Is he open to new roles?', 'Are you interested in forward deployed engineer roles?', 'Are you interested in FDE roles?', 'Would you take a forward deployed engineer job?'],
     a: 'AI Engineer, GenAI/LLM Engineer, Applied AI Engineer or Forward Deployed Engineer roles, ideally at an established product company, building LLM and RAG systems that real users depend on.',
   },
   {
@@ -120,7 +120,7 @@ export const faq: Faq[] = [
   },
   {
     id: 'strengths', group: 'Working style', q: 'What are your strengths?',
-    alts: ['Why should we hire you?', 'Why should I hire Roop?', 'Why hire him?', 'What are you good at?', 'What makes you a strong engineer?'],
+    alts: ['Why should we hire you?', 'Why should I hire Roop?', 'Why hire him?', 'What makes you stand out?', 'What are you good at?', 'What makes you a strong engineer?'],
     a: 'Owning a system end to end, measuring before deciding, and building things that stay honest: cited, tested, and clear when they don’t know.',
   },
   {

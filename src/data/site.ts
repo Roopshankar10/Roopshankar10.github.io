@@ -38,3 +38,14 @@ export const sections = [
   { id: 'notes', label: 'Notes' },
   { id: 'contact', label: 'Contact' },
 ] as const;
+
+// Feedback on "Ask my portfolio" answers. With a Google Form configured, every Yes/No (+ comment) is
+// recorded in the form's response sheet. Without one, a "No" opens a pre-filled email instead.
+// To set up: create a Google Form with 4 short-answer questions (question, answer, vote, comment),
+// open "Get pre-filled link" to find each field's entry id, then fill these in.
+export const feedback = {
+  googleForm: null as null | {
+    action: string; // https://docs.google.com/forms/d/e/<FORM_ID>/formResponse
+    fields: { question: string; answer: string; vote: string; comment: string }; // e.g. 'entry.123456'
+  },
+};

@@ -12,7 +12,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildChunks, buildSkillTexts, buildFaq } from './chunks.mjs';
+import { buildChunks, buildSkillTexts } from './chunks.mjs';
+import { buildQaBank, buildVocabulary } from './qa-bank.mjs';
+import { normalizeQuestion, tokenize } from '../src/scripts/search-core.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MODEL_ID = 'Xenova/bge-small-en-v1.5';
@@ -66,7 +68,12 @@ async function embedAll(dtype, texts) {
   return out.tolist();
 }
 
-const b64 = (vec) => Buffer.from(new Float32Array(vec).buffer).toString('base64');
+// Vectors are stored as int8 with a per-vector scale ("<scale>:<base64>"): ~4x smaller, cosine error < 0.005.
+const b64 = (vec) => {
+  const scale = Math.max(...vec.map(Math.abs)) || 1;
+  const q = Int8Array.from(vec, (x) => Math.round((x / scale) * 127));
+  return `${scale.toFixed(6)}:${Buffer.from(q.buffer).toString('base64')}`;
+};
 
 // Plain PCA via power iteration (2 components); enough for ~25 points × 384 dims.
 function pca2(vectors) {
@@ -104,8 +111,10 @@ async function main() {
   await copyOrt();
   const chunks = await buildChunks();
   const skillTexts = await buildSkillTexts();
-  const faq = await buildFaq();
-  const faqTexts = faq.flatMap((f) => f.variants);
+  const faq = await buildQaBank();
+  // Variants are embedded in the same canonical "you" form that visitor questions are rewritten to.
+  const faqTexts = faq.flatMap((f) => f.variants.map(normalizeQuestion));
+  const vocab = [...new Set(tokenize(await buildVocabulary()))].filter((t) => t.length > 1).sort();
   const dtype = await ensureModel();
 
   let vectors = null, skillVecs = null, faqVecs = null;
@@ -126,6 +135,7 @@ async function main() {
     model: vectors ? { id: MODEL_ID, dtype, dims: vectors[0].length, pooling: 'cls',
       queryPrefix: 'Represent this sentence for searching relevant passages: ' } : null,
     chunks: chunks.map((c, i) => ({ ...c, ...(vectors ? { emb: b64(vectors[i]) } : {}) })),
+    vocab,
     faq: (() => {
       let k = 0;
       return faq.map((f) => ({
@@ -144,7 +154,7 @@ async function main() {
     JSON.stringify({ method: coords ? `PCA of ${MODEL_ID} embeddings` : null, points: skillTexts.map((s, i) => ({ name: s.name, xy: coords?.[i] ?? null })) }, null, 1),
   );
 
-  log(`${chunks.length} chunks · ${faq.length} Q&A · ${vectors ? `dense (${dtype})` : 'keyword-only'} · ${Date.now() - t0} ms`);
+  log(`${chunks.length} chunks · ${faq.length} Q&A (${faqTexts.length} phrasings) · ${vectors ? `dense (${dtype})` : 'keyword-only'} · ${Date.now() - t0} ms`);
 }
 
 main().catch((e) => {

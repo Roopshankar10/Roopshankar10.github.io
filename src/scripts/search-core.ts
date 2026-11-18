@@ -82,11 +82,20 @@ export class Bm25 {
   }
 }
 
-export function decodeEmb(b64: string): Float32Array {
-  const bin = atob(b64);
+export function decodeEmb(packed: string): Float32Array {
+  const i = packed.indexOf(':');
+  const scale = i > 0 ? parseFloat(packed.slice(0, i)) : 0;
+  const bin = atob(i > 0 ? packed.slice(i + 1) : packed);
   const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new Float32Array(bytes.buffer);
+  for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+  if (i <= 0) return new Float32Array(bytes.buffer); // legacy float32 format
+  const q = new Int8Array(bytes.buffer);
+  const out = new Float32Array(q.length);
+  let norm = 0;
+  for (let k = 0; k < q.length; k++) (out[k] = (q[k] / 127) * scale), (norm += out[k] * out[k]);
+  norm = Math.sqrt(norm) || 1;
+  for (let k = 0; k < out.length; k++) out[k] /= norm; // re-normalize after quantization
+  return out;
 }
 
 const dot = (a: Float32Array, b: ArrayLike<number>) => {
@@ -150,7 +159,10 @@ export function search(
 }
 
 // ---------- Q&A matching (question-to-question) ----------
-export type FaqEntry = { id: string; group: string; q: string; a: string; anchor: string; variants: string[]; embs?: string[] };
+export type FaqEntry = {
+  id: string; kind: 'faq' | 'gen'; q: string; a: string; anchor: string; variants: string[];
+  entities?: string[]; link?: { label: string; href: string }; embs?: string[];
+};
 export type FaqMatch = { faq: FaqEntry; score: number; via: 'dense' | 'keyword'; matched: string };
 
 // Calibrated on bge-small-en-v1.5 (symmetric, no query prefix): unseen paraphrases scored 0.80–0.98,
@@ -167,11 +179,17 @@ function jaccard(a: Set<string>, b: Set<string>) {
 }
 
 /** symVec = normalized query embedding WITHOUT the retrieval prefix, or null in keyword mode. */
+/** Template questions ("Do you know X?") only count if the question really mentions X. */
+const mentions = (f: FaqEntry, normalized: string) =>
+  !f.entities || f.entities.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9])`).test(normalized));
+
 export function matchFaq(query: string, faqs: FaqEntry[], faqVecs: Float32Array[][] | null, symVec: ArrayLike<number> | null): FaqMatch | null {
   let best: FaqMatch | null = null;
+  const normalized = query.toLowerCase();
   if (faqVecs && symVec) {
     for (let i = 0; i < faqs.length; i++)
       for (let j = 0; j < faqVecs[i].length; j++) {
+        if (!mentions(faqs[i], normalized)) continue;
         const s = dot(faqVecs[i][j], symVec);
         if (s >= FAQ_COSINE && (!best || s > best.score)) best = { faq: faqs[i], score: s, via: 'dense', matched: faqs[i].variants[j] };
       }
@@ -181,12 +199,105 @@ export function matchFaq(query: string, faqs: FaqEntry[], faqVecs: Float32Array[
   // and the variant must share at least one meaningful word with the question if it has any.
   const qt = allTokens(query);
   const qc = new Set(contentTerms(query));
-  for (const f of faqs)
+  for (const f of faqs) {
+    if (!mentions(f, normalized)) continue;
     for (const v of f.variants) {
       const vt = allTokens(v);
       const sharesContent = !qc.size || [...qc].some((t) => vt.has(t));
       const s = jaccard(qt, vt);
       if (sharesContent && s >= FAQ_JACCARD && (!best || s > best.score)) best = { faq: f, score: s, via: 'keyword', matched: v };
     }
+  }
   return best;
+}
+
+/** Closest answerable questions, for "Did you mean…?" when nothing matches confidently. */
+export function nearestQuestions(faqs: FaqEntry[], faqVecs: Float32Array[][] | null, symVec: ArrayLike<number> | null, k = 3): string[] {
+  if (!faqVecs || !symVec) return [];
+  return faqs
+    .map((f, i) => ({ f, s: Math.max(...faqVecs[i].map((v) => dot(v, symVec))) }))
+    .filter((x) => x.s >= 0.55)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, k)
+    .map((x) => x.f.q);
+}
+
+// ---------- Understanding the question ----------
+// Visitors say "you", "he", "Roop" or "the candidate" for the same person. Every question is rewritten
+// into one canonical second-person form before it's matched, so all of them land on the same answer.
+const PERSON: [RegExp, string][] = [
+  [/\b(mr\.?\s+)?roop\s+shankar\s+voruganti'?s\b/g, 'your'],
+  [/\b(mr\.?\s+)?roop\s+shankar\s+voruganti\b/g, 'you'],
+  [/\broop\s+shankar'?s\b/g, 'your'], [/\broop\s+shankar\b/g, 'you'],
+  [/\broop'?s\b/g, 'your'], [/\broop\b/g, 'you'], [/\bvoruganti'?s\b/g, 'your'], [/\bvoruganti\b/g, 'you'],
+  [/\b(the|this)\s+(candidate|person|guy|engineer)'?s\b/g, 'your'], [/\b(the|this)\s+(candidate|person|guy|engineer)\b/g, 'you'],
+  [/\bhe'?s\b/g, 'you are'], [/\bhe'?d\b/g, 'you would'], [/\bhe'?ll\b/g, 'you will'],
+  [/\bhimself\b/g, 'yourself'], [/\bhis\b/g, 'your'], [/\bhim\b/g, 'you'], [/\bhe\b/g, 'you'],
+  [/\bdoes you\b/g, 'do you'], [/\bhas you\b/g, 'have you'], [/\bis you\b/g, 'are you'], [/\bwas you\b/g, 'were you'],
+  [/\byou has\b/g, 'you have'], [/\byou is\b/g, 'you are'], [/\byou was\b/g, 'you were'], [/\byou does\b/g, 'you do'],
+];
+export function normalizeQuestion(q: string): string {
+  let s = ' ' + q.toLowerCase().replace(/[’‘`]/g, "'").replace(/\s+/g, ' ').trim() + ' ';
+  // drop a leading greeting when a real question follows: "hi, what's your notice period?"
+  s = s.replace(/^\s*(hi+|hello|hey|hola|namaste|good (morning|afternoon|evening))\b[\s,!.:-]*(?=\S.{6,})/, ' ');
+  for (const [re, to] of PERSON) s = s.replace(re, to);
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+export type SmallTalk = 'greeting' | 'thanks' | 'bye' | 'bot' | 'help';
+export function detectSmallTalk(q: string): SmallTalk | null {
+  const s = q.toLowerCase().replace(/[^a-z' ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+  if (/^(hi+|hello+|hey+|hiya|hola|namaste|yo|good (morning|afternoon|evening)|greetings)( there| roop| team| all)?$/.test(s)) return 'greeting';
+  if (/^(thanks|thank you|thx|ty|cheers|great|cool|nice|awesome|perfect|ok|okay|got it)( (so much|a lot|roop))?$/.test(s)) return 'thanks';
+  if (/^(bye|goodbye|see you|see ya|cya|good night)$/.test(s)) return 'bye';
+  if (/\b(are you|is this) (a |an )?(bot|ai|robot|chatbot|real|human|chatgpt|gpt|llm)\b/.test(s) || /^(what is this|how does this work|how do you work)$/.test(s)) return 'bot';
+  if (/^(help|what can (i|you) ask|what can you (do|answer)|what should i ask|what do you know)$/.test(s)) return 'help';
+  return null;
+}
+
+/** "Do you know X?" style questions: returns X, so unknown technologies get an honest "not in my skills". */
+export function askedTechnology(normalized: string): string | null {
+  const m = normalized.match(
+    /\b(?:do you know|do you use|have you (?:ever )?(?:used|worked (?:with|on)|built (?:with|using))|any experience (?:with|in)|experience (?:with|in)|are you familiar with|familiar with|can you (?:use|work with|code in)|are you (?:good|skilled|proficient|experienced) (?:at|in|with)|experienced (?:with|in)|can you build|know about|worked with|knowledge of)\s+(.+?)[?.!]*$/,
+  );
+  return m ? m[1].replace(/^(the|a|an)\s+/, '').trim() : null;
+}
+
+// ---------- The full answer pipeline (shared by the browser and the eval) ----------
+export type SearchCtx = {
+  chunks: Chunk[]; bm25: Bm25; vectors: Float32Array[] | null;
+  faq: FaqEntry[]; faqVecs: Float32Array[][] | null; vocab: Set<string>;
+};
+export type Answer =
+  | { kind: 'smalltalk'; intent: SmallTalk }
+  | { kind: 'qa'; match: FaqMatch; support: Hit[]; mode: Mode }
+  | { kind: 'unknown_tech'; tech: string; missing: string[]; mode: Mode }
+  | { kind: 'passages'; hits: Hit[]; mode: Mode; bestCosine: number | null }
+  | { kind: 'not_found'; reason: string; suggestions: string[]; mode: Mode; bestCosine: number | null };
+
+/** qv = retrieval embedding of the original question (with query prefix); sv = symmetric embedding of normalizeQuestion(q). */
+export function answer(q: string, ctx: SearchCtx, qv: ArrayLike<number> | null, sv: ArrayLike<number> | null): Answer {
+  const intent = detectSmallTalk(q);
+  if (intent) return { kind: 'smalltalk', intent };
+  const n = normalizeQuestion(q);
+  const mode: Mode = qv && ctx.vectors ? 'hybrid' : 'keyword';
+
+  // An unknown technology ("Do you know Kubernetes?") gets an honest no before anything else can
+  // match it by sentence shape ("Do you know AWS?").
+  const tech = askedTechnology(n);
+  if (tech) {
+    const missing = contentTerms(tech.replace(/[-_/]/g, ' ')).filter((t) => !ctx.vocab.has(t));
+    if (missing.length) return { kind: 'unknown_tech', tech, missing, mode };
+  }
+
+  const r = search(q, ctx.chunks, ctx.bm25, mode === 'hybrid' ? ctx.vectors : null, qv);
+  const fm = matchFaq(n, ctx.faq, sv ? ctx.faqVecs : null, sv);
+  if (fm) {
+    const related = (h: Hit) => (h.cosine !== null ? h.cosine >= 0.6 : h.bm25 >= 2);
+    const support = r.kind === 'answer' ? r.hits.filter((h) => h.chunk.id !== fm.faq.id && related(h)).slice(0, 2) : [];
+    return { kind: 'qa', match: fm, support, mode };
+  }
+  if (r.kind === 'answer') return { kind: 'passages', hits: r.hits, mode, bestCosine: r.bestCosine };
+  return { kind: 'not_found', reason: r.reason, suggestions: nearestQuestions(ctx.faq, ctx.faqVecs, sv), mode, bestCosine: r.bestCosine };
 }
