@@ -161,7 +161,7 @@ export function search(
 // ---------- Q&A matching (question-to-question) ----------
 export type FaqEntry = {
   id: string; kind: 'faq' | 'gen'; q: string; a: string; anchor: string; variants: string[];
-  entities?: string[]; link?: { label: string; href: string }; embs?: string[];
+  entities?: string[]; link?: { label: string; href: string }; embs?: string[]; suggest?: false;
 };
 export type FaqMatch = { faq: FaqEntry; score: number; via: 'dense' | 'keyword'; matched: string };
 
@@ -216,7 +216,7 @@ export function nearestQuestions(faqs: FaqEntry[], faqVecs: Float32Array[][] | n
   if (!faqVecs || !symVec) return [];
   return faqs
     .map((f, i) => ({ f, s: Math.max(...faqVecs[i].map((v) => dot(v, symVec))) }))
-    .filter((x) => x.s >= 0.55)
+    .filter((x) => x.s >= 0.55 && x.f.suggest !== false) // only offer questions worth offering
     .sort((a, b) => b.s - a.s)
     .slice(0, k)
     .map((x) => x.f.q);

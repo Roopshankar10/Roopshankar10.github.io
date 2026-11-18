@@ -3,7 +3,8 @@
 // which is far more reliable than matching questions against paragraphs.
 // `alts` are paraphrases visitors might type, in both "you" and "he/Roop" forms.
 
-export type Faq = { id: string; group: FaqGroup; q: string; alts: string[]; a: string };
+// suggest: false → answered when asked directly, but never offered as a suggested question.
+export type Faq = { id: string; group: FaqGroup; q: string; alts: string[]; a: string; suggest?: false };
 export type FaqGroup = 'About me' | 'Logistics' | 'Experience' | 'Skills' | 'Working style';
 export const faqGroups: FaqGroup[] = ['About me', 'Logistics', 'Experience', 'Skills', 'Working style'];
 // Answers are only shown through "Ask my portfolio"; their [S1] citation points at the closest page section.
@@ -77,7 +78,7 @@ export const faq: Faq[] = [
     a: 'I worked solo, so I owned it end to end: ingestion and OCR, structure-aware chunking, hybrid retrieval, the LLM router, citation validation, the evaluation set and the Streamlit app. With no reviewer, I wrote the evals to keep myself honest.',
   },
   {
-    id: 'production', group: 'Experience', q: 'Is any of your work in production?',
+    id: 'production', group: 'Experience', suggest: false, q: 'Is any of your work in production?',
     alts: ['Do you have production experience?', 'Have you deployed to production?', 'How many users use your work?', 'Has he shipped anything to production?'],
     a: 'Not yet. My work so far has been validated with evals and stakeholder demos, not live users. Shipping to production is my next step, and the public Service Manual Copilot (FastAPI, CI evals, observability, live demo) is how I’m building that experience now.',
   },
@@ -112,12 +113,12 @@ export const faq: Faq[] = [
     a: 'Yes. In the JIRA–GPT prototype I designed API schemas and calls so an LLM could query JIRA in natural language. In the Service Instructions Assistant, an LLM router decides how each message is handled before any search runs.',
   },
   {
-    id: 'finetuning', group: 'Skills', q: 'Do you have fine-tuning experience?',
+    id: 'finetuning', group: 'Skills', suggest: false, q: 'Do you have fine-tuning experience?',
     alts: ['Have you fine-tuned a model?', 'Do you know LoRA or fine-tuning?', 'Have you trained LLMs?'],
     a: 'Not yet. My work has focused on retrieval, prompting and evaluation.',
   },
   {
-    id: 'cloud', group: 'Skills', q: 'Which cloud platforms have you used?',
+    id: 'cloud', group: 'Skills', suggest: false, q: 'Which cloud platforms have you used?',
     alts: ['Do you know AWS?', 'Do you know GCP?', 'Cloud experience?', 'Have you worked on the cloud?'],
     a: 'Azure: my Service Instructions Assistant was served behind an Azure API Management gateway. Beyond that, I haven’t done hands-on work on AWS, Azure or GCP yet; my LLM work has run on local models (Llama 3 via Ollama).',
   },
@@ -137,12 +138,12 @@ export const faq: Faq[] = [
     a: 'Owning a system end to end, measuring before deciding, and building things that stay honest: cited, tested, and clear when they don’t know.',
   },
   {
-    id: 'weakness', group: 'Working style', q: 'What is a weakness you are working on?',
+    id: 'weakness', group: 'Working style', suggest: false, q: 'What is a weakness you are working on?',
     alts: ['What are your weaknesses?', 'What do you need to improve?', 'What is your biggest gap?'],
     a: 'Limited production experience. My work has been prototypes and internal systems, so I’m deliberately closing that gap by shipping a public, deployed project with CI and monitoring.',
   },
   {
-    id: 'failure', group: 'Working style', q: 'Tell me about a time something failed and what you changed',
+    id: 'failure', group: 'Working style', suggest: false, q: 'Tell me about a time something failed and what you changed',
     alts: ['Tell me about a failure', 'What did you learn from a mistake?', 'When did something not work?'],
     a: 'Vector-only retrieval wasn’t reliable on questions with exact part numbers. Instead of tweaking prompts, I built a 64-question eval set, measured the problem, and added BM25 with Reciprocal Rank Fusion, which reached 91% hit@5.',
   },

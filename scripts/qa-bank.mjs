@@ -70,7 +70,7 @@ export async function buildQaBank() {
   const B = [];
 
   // 1. Hand-written answers (approved by Roop)
-  for (const f of faq) B.push({ id: `faq-${f.id}`, kind: 'faq', q: f.q, variants: [f.q, ...f.alts], a: f.a, anchor: faqAnchor[f.group] });
+  for (const f of faq) B.push({ id: `faq-${f.id}`, kind: 'faq', q: f.q, variants: [f.q, ...f.alts], a: f.a, anchor: faqAnchor[f.group], ...(f.suggest === false ? { suggest: false } : {}) });
 
   // 2. Skills: "Do you know X?" → yes, with where it was used
   for (const s of skills) {
