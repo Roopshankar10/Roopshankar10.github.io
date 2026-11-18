@@ -1,4 +1,4 @@
-// Recruiter Q&A: answers written or approved by Roop. Shown on the page (section #faq) and used by
+// Recruiter Q&A: answers written or approved by Roop. Used by
 // "Ask my portfolio": a visitor's question is matched against `q` + `alts` (question-to-question),
 // which is far more reliable than matching questions against paragraphs.
 // `alts` are paraphrases visitors might type, in both "you" and "he/Roop" forms.
@@ -6,6 +6,14 @@
 export type Faq = { id: string; group: FaqGroup; q: string; alts: string[]; a: string };
 export type FaqGroup = 'About me' | 'Logistics' | 'Experience' | 'Skills' | 'Working style';
 export const faqGroups: FaqGroup[] = ['About me', 'Logistics', 'Experience', 'Skills', 'Working style'];
+// Answers are only shown through "Ask my portfolio"; their [S1] citation points at the closest page section.
+export const faqAnchor: Record<FaqGroup, string> = {
+  'About me': '#hero',
+  Logistics: '#contact',
+  Experience: '#projects',
+  Skills: '#skills',
+  'Working style': '#principles',
+};
 
 export const faq: Faq[] = [
   {

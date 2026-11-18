@@ -52,12 +52,12 @@ const PROJECT_ALIASES = {
 };
 
 export async function buildQaBank() {
-  const { profile, projects, trace, skills, clusterOrder, education, certifications, faq } = await load();
+  const { profile, projects, trace, skills, clusterOrder, education, certifications, faq, faqAnchor } = await load();
   const nameOf = Object.fromEntries(projects.map((p) => [p.id, p.name]));
   const B = [];
 
   // 1. Hand-written answers (approved by Roop)
-  for (const f of faq) B.push({ id: `faq-${f.id}`, kind: 'faq', q: f.q, variants: [f.q, ...f.alts], a: f.a, anchor: `#faq-${f.id}` });
+  for (const f of faq) B.push({ id: `faq-${f.id}`, kind: 'faq', q: f.q, variants: [f.q, ...f.alts], a: f.a, anchor: faqAnchor[f.group] });
 
   // 2. Skills: "Do you know X?" → yes, with where it was used
   for (const s of skills) {

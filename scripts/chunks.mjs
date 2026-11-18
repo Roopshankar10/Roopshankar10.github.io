@@ -11,7 +11,7 @@ const load = async () => ({
 const list = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 
 export async function buildChunks() {
-  const { profile, heroStats, projects, trace, skills, clusterOrder, principles, education, certifications, faq } = await load();
+  const { profile, heroStats, projects, trace, skills, clusterOrder, principles, education, certifications, faq, faqAnchor } = await load();
   const C = [];
   const add = (id, section, anchor, title, text) => C.push({ id, section, anchor, title, text });
 
@@ -75,15 +75,9 @@ export async function buildChunks() {
     'This portfolio runs semantic search in the browser: content is chunked and embedded at build time with bge-small-en-v1.5, the query is embedded in a Web Worker with transformers.js, and dense and BM25 keyword results are merged with Reciprocal Rank Fusion. No server and no API keys.');
 
   // Q&A answers are also ordinary passages, so they can support other questions.
-  for (const f of faq) add(`faq-${f.id}`, 'Q&A', `#faq-${f.id}`, f.q, f.a);
+  for (const f of faq) add(`faq-${f.id}`, 'Q&A', faqAnchor[f.group], f.q, f.a);
 
   return C;
-}
-
-// Question variants for question-to-question matching (embedded without the query prefix: symmetric task).
-export async function buildFaq() {
-  const { faq } = await load();
-  return faq.map((f) => ({ id: f.id, group: f.group, q: f.q, a: f.a, anchor: `#faq-${f.id}`, variants: [f.q, ...f.alts] }));
 }
 
 export async function buildSkillTexts() {
